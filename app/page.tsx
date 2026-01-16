@@ -6,7 +6,7 @@ import Footer from "@/components/landing/Footer";
 
 export default function Home() {
   return (
-    <div className="font-poppins">
+    <div className="font-plus-jakarta-sans">
       <Navbar />
       <Hero />
       <Features />
