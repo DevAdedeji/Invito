@@ -20,7 +20,7 @@ export default function DashboardPage() {
                 {isLoading ? (
                     // Loading Skeletons
                     Array(4).fill(0).map((_, i) => (
-                        <div key={i} className="h-[350px] w-full bg-muted/20 rounded-xl animate-pulse" />
+                        <Skeleton key={i} className="h-[350px] w-full  rounded-xl animate-pulse" />
                     ))
                 ) : (
                     <>
