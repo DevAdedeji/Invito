@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import "material-symbols/outlined.css";
+import { Toaster } from "@/components/ui/sonner";
 
 
 
@@ -26,6 +27,7 @@ export default function RootLayout({
         className={`${plusJakartaSans.variable} antialiased`}
       >
         {children}
+        <Toaster />
       </body>
     </html>
   );
