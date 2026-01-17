@@ -49,7 +49,7 @@ Invito is a modern, full-stack event management platform built with Next.js, Fir
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/yourusername/invito.git
+    git clone https://github.com/devadedeji/invito.git
     cd invito
     ```
 
