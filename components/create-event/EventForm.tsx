@@ -122,6 +122,26 @@ export function EventForm({ form }: EventFormProps) {
                             </FormItem>
                         )}
                     />
+
+                    <FormField
+                        control={form.control}
+                        name="capacity"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Max Attendees</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        placeholder="100"
+                                        {...field}
+                                        className="bg-gray-50 dark:bg-zinc-800/50 border-0 focus-visible:ring-violet-500 rounded-xl h-12"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
             </div>
 

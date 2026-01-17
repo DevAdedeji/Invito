@@ -24,6 +24,7 @@ const formSchema = z.object({
     location: z.string().min(2, "Location is required"),
     description: z.string().max(2500, "Description must be less than 2500 characters").optional(),
     imageUrl: z.string().optional(),
+    capacity: z.coerce.number().min(1, "Capacity must be at least 1").default(100),
 });
 
 export type EventFormValues = z.infer<typeof formSchema>;
@@ -33,7 +34,7 @@ export default function CreateEventPage() {
     const router = useRouter();
 
     const form = useForm<EventFormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as any,
         defaultValues: {
             title: "",
             hostName: "",
@@ -42,6 +43,7 @@ export default function CreateEventPage() {
             description: "",
             startTime: "16:00",
             endTime: "22:00",
+            capacity: 100,
         },
     });
 
@@ -72,7 +74,7 @@ export default function CreateEventPage() {
                 // Add fields expected by EventCard/useEvents interface that might be missing
                 date: new Date(`${formatDate(values.startDate)}T${values.startTime}`).toISOString(),
                 attendees: 0,
-                capacity: 100, // Default capacity or add field
+                capacity: values.capacity, // Default capacity or add field
                 status: 'active'
             };
 

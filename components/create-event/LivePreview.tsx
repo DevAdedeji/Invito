@@ -90,7 +90,7 @@ export function LivePreview({ formValues }: LivePreviewProps) {
                         <img alt="User avatar" className="w-8 h-8 rounded-full border-2 border-white dark:border-background-dark object-cover" data-alt="Small avatar of a man with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBby20m6NC13AG-73MAHrKRHwvnQ2gn6Lz3rEdgSumLD6CxmBu-1cYodKPSqCvqt5HbzkAdDlIV7nGZiChqr0-VegEOuWc06Sb-nGkRdK2gBqXcjcnNlekle7qUhS5qqS6N1cYTmm0ldhGKS80LHEkbUj0zew-Fb-Ho7CLy1MVCq1G4xh0I1D0wHyowzvCRoZhpVaLX7pQmZMV4o2qss4FKRlKoMls6bfQ3SFManD9En3M1WdwlhY2vW_M2BALJYCJdw59wC3XBqn5U" />
                     </div>
                     <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                        0 going
+                        0 / {formValues.capacity || 100} going
                     </span>
                 </div>
             </div>

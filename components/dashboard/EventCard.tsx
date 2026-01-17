@@ -8,7 +8,7 @@ import { format } from "date-fns";
 
 export default function EventCard({ event }: { event: Event }) {
     return (
-        <Card className="overflow-hidden border-none shadow-soft hover:shadow-hover transition-all duration-300 group cursor-pointer h-full flex flex-col">
+        <Card className="overflow-hidden border-none shadow-soft hover:shadow-hover transition-all duration-300 group cursor-pointer h-full flex flex-col !pt-0">
             <div className="relative h-48 w-full bg-muted">
                 {event.imageUrl ? (
                     <Image
@@ -22,11 +22,11 @@ export default function EventCard({ event }: { event: Event }) {
                         No Image
                     </div>
                 )}
-                <div className="absolute top-3 right-3">
+                {/* <div className="absolute top-3 right-3">
                     <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-xs font-bold shadow-sm uppercase tracking-wider text-primary">
                         Featured
                     </Badge>
-                </div>
+                </div> */}
             </div>
 
             <CardContent className="p-5 flex flex-col flex-grow">
