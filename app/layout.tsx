@@ -27,7 +27,7 @@ export default function RootLayout({
         className={`${plusJakartaSans.variable} antialiased`}
       >
         {children}
-        <Toaster />
+        <Toaster position="top-right" />
       </body>
     </html>
   );

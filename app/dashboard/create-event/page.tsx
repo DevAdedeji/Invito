@@ -56,14 +56,27 @@ export default function CreateEventPage() {
             // Note: For simplicity, we are saving them separately or as strings for now,
             // but typically one would combine them. The form values are what they are.
 
-            await addDoc(collection(db, "events"), {
+
+            // Construct payload, ensuring no undefined values
+            // Construct payload, ensuring no undefined values
+            const payload = {
                 ...values,
-                userId: user.uid,
+                imageUrl: values.imageUrl || null,
+                description: values.description || null,
+                creatorId: user.uid, // Changed from userId to creatorId to match hook
+                userId: user.uid, // Keeping access for both just in case
                 createdAt: serverTimestamp(),
                 // Combine date and time for easier querying later if needed
                 startDateTime: new Date(`${formatDate(values.startDate)}T${values.startTime}`),
                 endDateTime: new Date(`${formatDate(values.endDate)}T${values.endTime}`),
-            });
+                // Add fields expected by EventCard/useEvents interface that might be missing
+                date: new Date(`${formatDate(values.startDate)}T${values.startTime}`).toISOString(),
+                attendees: 0,
+                capacity: 100, // Default capacity or add field
+                status: 'active'
+            };
+
+            await addDoc(collection(db, "events"), payload);
 
             toast.success("Event created successfully!");
             router.push("/dashboard");
