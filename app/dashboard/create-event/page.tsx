@@ -11,7 +11,7 @@ import { db, auth } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner"; // Assuming sonner is installed as per package.json
+import { toast } from "sonner";
 
 const formSchema = z.object({
     title: z.string().min(2, "Title must be at least 2 characters"),
@@ -25,6 +25,7 @@ const formSchema = z.object({
     description: z.string().max(2500, "Description must be less than 2500 characters").optional(),
     imageUrl: z.string().optional(),
     capacity: z.coerce.number().min(1, "Capacity must be at least 1").default(100),
+    locationType: z.enum(["physical", "online"]).default("physical"),
 });
 
 export type EventFormValues = z.infer<typeof formSchema>;
@@ -44,6 +45,7 @@ export default function CreateEventPage() {
             startTime: "16:00",
             endTime: "22:00",
             capacity: 100,
+            locationType: "physical",
         },
     });
 
@@ -54,27 +56,18 @@ export default function CreateEventPage() {
         }
 
         try {
-            // Construct standard JS Date objects combining date and time
-            // Note: For simplicity, we are saving them separately or as strings for now,
-            // but typically one would combine them. The form values are what they are.
-
-
-            // Construct payload, ensuring no undefined values
-            // Construct payload, ensuring no undefined values
             const payload = {
                 ...values,
                 imageUrl: values.imageUrl || null,
                 description: values.description || null,
-                creatorId: user.uid, // Changed from userId to creatorId to match hook
-                userId: user.uid, // Keeping access for both just in case
+                creatorId: user.uid,
+                userId: user.uid,
                 createdAt: serverTimestamp(),
-                // Combine date and time for easier querying later if needed
                 startDateTime: new Date(`${formatDate(values.startDate)}T${values.startTime}`),
                 endDateTime: new Date(`${formatDate(values.endDate)}T${values.endTime}`),
-                // Add fields expected by EventCard/useEvents interface that might be missing
                 date: new Date(`${formatDate(values.startDate)}T${values.startTime}`).toISOString(),
                 attendees: 0,
-                capacity: values.capacity, // Default capacity or add field
+                capacity: values.capacity,
                 status: 'active'
             };
 

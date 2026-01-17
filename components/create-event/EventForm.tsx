@@ -148,7 +148,6 @@ export function EventForm({ form }: EventFormProps) {
             <div className="space-y-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-violet-600 dark:text-violet-400">Date & Location</h2>
-                    {/* Virtual Event Toggle could go here */}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -269,22 +268,50 @@ export function EventForm({ form }: EventFormProps) {
                     </div>
                 </div>
 
-                <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Location</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                                    <Input placeholder="Search for a venue or address" {...field} className="pl-10 bg-gray-50 dark:bg-zinc-800/50 border-0 focus-visible:ring-violet-500 rounded-xl h-12" />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <FormField
+                        control={form.control}
+                        name="locationType"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Location Type</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="w-full bg-gray-50 dark:bg-zinc-800/50 border-0 focus:ring-violet-500 rounded-xl h-12">
+                                            <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="physical">📍 Physical Location</SelectItem>
+                                        <SelectItem value="online">🌐 Online Event</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                                <FormLabel>{form.watch("locationType") === "online" ? "Meeting Link/URL" : "Venue Address"}</FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                                        <Input
+                                            placeholder={form.watch("locationType") === "online" ? "https://meet.google.com/..." : "Search for a venue or address"}
+                                            {...field}
+                                            className="pl-10 bg-gray-50 dark:bg-zinc-800/50 border-0 focus-visible:ring-violet-500 rounded-xl h-12"
+                                        />
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
             </div>
 
             <div className="space-y-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm">

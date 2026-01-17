@@ -3,9 +3,8 @@
 
 import { EventFormValues } from "@/app/dashboard/create-event/page";
 import { format } from "date-fns";
-import { MapPin, Clock, Users, Calendar } from "lucide-react";
+import { MapPin, Calendar, Link as LinkIcon } from "lucide-react";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
 
 interface LivePreviewProps {
     formValues: EventFormValues;
@@ -69,14 +68,17 @@ export function LivePreview({ formValues }: LivePreviewProps) {
 
                     <div className="flex items-start gap-3">
                         <div className="p-2 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400">
-                            <MapPin className="w-5 h-5" />
+                            {formValues.locationType === 'online' ? <LinkIcon className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
                                 {location || "Location"}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
-                                Click for map
+                                {formValues.locationType === 'online'
+                                    ? (location?.startsWith('http') ? "Join via Link" : "Online Event")
+                                    : "Click for map"
+                                }
                             </p>
                         </div>
                     </div>
