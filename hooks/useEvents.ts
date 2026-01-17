@@ -17,10 +17,6 @@ export interface Event {
 
 const fetchEvents = async (userId: string | undefined): Promise<Event[]> => {
     if (!userId) return [];
-    // For now, let's assume events are at the top level or nested under users.
-    // Let's assume a root 'events' collection where 'creatorId' == userId
-    // You might need to adjust this depending on your Firestore schema design.
-
     // NOTE: This requires a Firestore index if you add sorting later.
     const q = query(collection(db, "events"), where("creatorId", "==", userId));
     const querySnapshot = await getDocs(q);

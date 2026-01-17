@@ -85,11 +85,9 @@ export function LivePreview({ formValues }: LivePreviewProps) {
                 {/* Attendees Stack Placeholder */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-zinc-800">
                     <div className="flex -space-x-2">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-gray-200 dark:bg-zinc-700 flex items-center justify-center text-[10px]">
-                                User
-                            </div>
-                        ))}
+                        <img alt="User avatar" className="w-8 h-8 rounded-full border-2 border-white dark:border-background-dark object-cover" data-alt="Small avatar of a smiling woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFenvZkgOZ5mC80BonCRo9nBSZvn85_DPx9cOg25cT4NNnh4cTMdet6THJIbc-clBZJGUHMOGEpVAZg9JoVmAgwE2sS0ZEaiLcRZ7hwZ-NsM-xgSAqSJGCis9RH9oqtaA2HZR3C_uq7F6_YCksGdCu5D2_hnbTzCCRTeuZAT-fimA827ELeqQvYi1ed0WfdF4Or25CrzJIPzZbZLTtmyHUNiZ0trg5HUM-AQRmDUmEAdxBReT9QmNelBQl0oQ8qFEepXy-GcDzJ1km" />
+                        <img alt="User avatar" className="w-8 h-8 rounded-full border-2 border-white dark:border-background-dark object-cover" data-alt="Small avatar of a smiling man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpwZ1YmYd23O93bVYUqoSR_mvQBg7tT1CpqwHcs5_WObRS0G34tkoP0p_lWI5yDVmp06gnfnDFmFhNmxxVKR9FQo5l6SK1C1UQieFpbH7xRgubMiBi7IBfshylUs7ZxO9mQMUh-0QF96Mn-rIaJTzpQcKB-LHZQ-Jr58BuC76pHUaQooalXKIoiqs2W1Z4seRIDqOEnyJtb1gHDwDzsV0yQA2iowIvg-XB3FHpjBw0fJOF9jVPIVLVbBUvEfV_MyuHrnMgCnbJoKxx" />
+                        <img alt="User avatar" className="w-8 h-8 rounded-full border-2 border-white dark:border-background-dark object-cover" data-alt="Small avatar of a man with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBby20m6NC13AG-73MAHrKRHwvnQ2gn6Lz3rEdgSumLD6CxmBu-1cYodKPSqCvqt5HbzkAdDlIV7nGZiChqr0-VegEOuWc06Sb-nGkRdK2gBqXcjcnNlekle7qUhS5qqS6N1cYTmm0ldhGKS80LHEkbUj0zew-Fb-Ho7CLy1MVCq1G4xh0I1D0wHyowzvCRoZhpVaLX7pQmZMV4o2qss4FKRlKoMls6bfQ3SFManD9En3M1WdwlhY2vW_M2BALJYCJdw59wC3XBqn5U" />
                     </div>
                     <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                         0 going
@@ -97,11 +95,6 @@ export function LivePreview({ formValues }: LivePreviewProps) {
                 </div>
             </div>
 
-            <div className="p-4 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800">
-                <button className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors shadow-lg shadow-violet-600/20 text-sm">
-                    Example Button
-                </button>
-            </div>
 
         </div>
     );

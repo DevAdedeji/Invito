@@ -105,7 +105,8 @@ export function EventForm({ form }: EventFormProps) {
                                 <FormLabel>Event Type</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
-                                        <SelectTrigger className="bg-gray-50 dark:bg-zinc-800/50 border-0 focus:ring-violet-500 rounded-xl h-12">
+
+                                        <SelectTrigger className="w-full bg-gray-50 dark:bg-zinc-800/50 border-0 focus:ring-violet-500 rounded-xl h-12">
                                             <SelectValue placeholder="Select event type" />
                                         </SelectTrigger>
                                     </FormControl>
