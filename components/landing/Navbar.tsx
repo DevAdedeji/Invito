@@ -1,4 +1,12 @@
+"use client"
+
+import Link from "next/link";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
+
 export default function Navbar() {
+    const [user] = useAuthState(auth);
+
     return (
         <nav className="sticky top-0 z-50 border-b border-[#eee9f1] dark:border-gray-800 bg-surface-light/90 dark:bg-background-dark/90 backdrop-blur-md">
             <div className="mx-auto max-w-[1280px] px-6 py-4">
@@ -11,19 +19,25 @@ export default function Navbar() {
                     </div>
                     <div className="hidden md:flex items-center gap-8">
                         <a className="text-sm font-medium text-text-main dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors" href="#features">Features</a>
-                        {/* <a className="text-sm font-medium text-text-main dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors" href="#">Pricing</a>
-                        <a className="text-sm font-medium text-text-main dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors" href="#">Resources</a> */}
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="hidden sm:flex text-sm font-bold text-text-main dark:text-gray-200 hover:text-primary dark:hover:text-primary px-3 py-2 transition-colors">
-                            Log in
-                        </button>
-                        <button className="flex items-center justify-center rounded-xl bg-primary hover:bg-primary-dark text-white text-sm font-bold h-10 px-5 transition-all shadow-md hover:shadow-lg">
-                            Get Started
-                        </button>
+                        {user ? (
+                            <Link href="/dashboard" className="flex items-center justify-center rounded-xl bg-primary hover:bg-primary-dark text-white text-sm font-bold h-10 px-5 transition-all shadow-md hover:shadow-lg">
+                                Dashboard
+                            </Link>
+                        ) : (
+                            <>
+                                <Link href="/auth" className="hidden sm:flex text-sm font-bold text-text-main dark:text-gray-200 hover:text-primary dark:hover:text-primary px-3 py-2 transition-colors">
+                                    Log in
+                                </Link>
+                                <Link href="/auth" className="flex items-center justify-center rounded-xl bg-primary hover:bg-primary-dark text-white text-sm font-bold h-10 px-5 transition-all shadow-md hover:shadow-lg">
+                                    Get Started
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
         </nav>
-    )
+    );
 }

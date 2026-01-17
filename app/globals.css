@@ -176,3 +176,7 @@ html {
 body {
   letter-spacing: 0.4px;
 }
+
+button {
+  cursor: pointer;
+}

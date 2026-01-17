@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invito - Event Management Platform
 
-## Getting Started
+Invito is a modern, full-stack event management platform built with Next.js, Firebase, and Tailwind CSS. It allows users to create, manage, and share events seamlessly, with features like public RSVP pages, real-time guest tracking, and email invitations.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+-   **User Authentication**: Secure login and signup powered by Firebase Authentication.
+-   **Dashboard**: A centralized hub to manage all your events, track RSVPs, and view analytics.
+-   **Create & Customize Events**: Effortlessly create events with custom details, including:
+    -   Event Title, Date, and Time
+    -   Location (Physical or Online)
+    -   Cover Image Upload (via Cloudinary)
+    -   Description and Capacity
+-   **Public RSVP Pages**: Generate unique, shareable links for public events.
+    -   Guests can RSVP (Attending, Not Attending, Maybe).
+    -   Real-time attendee counter.
+    -   Add to Calendar (Google Calendar) integration.
+    -   Location mapping (Google Maps integration).
+-   **Guest Management**:
+    -   View and filter guest lists by status.
+    -   Search guests by name or email.
+    -   Real-time updates.
+-   **Responsive Design**: Fully optimized for desktop, tablet, and mobile devices.
+-   **Dark Mode Support**: Beautiful dark mode UI with Shadcn components.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+-   **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+-   **UI Components**: [Shadcn UI](https://ui.shadcn.com/)
+-   **Icons**: [Lucide React](https://lucide.dev/)
+-   **Database & Auth**: [Firebase](https://firebase.google.com/) (Firestore, Auth)
+-   **State Management**: [TanStack Query](https://tanstack.com/query/latest) (React Query)
+-   **Image Storage**: [Cloudinary](https://cloudinary.com/)
+-   **Date Handling**: [date-fns](https://date-fns.org/)
+-   **Toast Notifications**: [Sonner](https://github.com/emilkowalski/sonner)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Getting Started
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+-   Node.js 18+ installed
+-   A Firebase project
+-   A Cloudinary account
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1.  **Clone the repository:**
 
-## Deploy on Vercel
+    ```bash
+    git clone https://github.com/yourusername/invito.git
+    cd invito
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2.  **Install dependencies:**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+
+3.  **Set up Environment Variables:**
+
+    Create a `.env` file in the root directory and add your keys:
+
+    ```env
+    NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+    NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
+    CLOUDINARY_API_SECRET=your_api_secret
+    CLOUDINARY_API_KEY=your_api_key
+    ```
+
+4.  **Set up Firestore Rules:**
+
+    Copy the contents of `firestore.rules` and publish them in your Firebase Console > Firestore Database > Rules to ensure correct permissions.
+
+5.  **Run the development server:**
+
+    ```bash
+    npm run dev
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License.
