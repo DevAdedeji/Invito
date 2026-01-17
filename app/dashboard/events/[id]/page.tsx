@@ -106,7 +106,7 @@ export default function EventDetailsPage() {
     }
 
     return (
-        <div className="container mx-auto py-8 space-y-8">
+        <div className="container mx-auto pt-4 pb-8 space-y-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
