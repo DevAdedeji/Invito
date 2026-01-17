@@ -88,7 +88,7 @@ export default function CreateEventPage() {
     }
 
     return (
-        <div className="container mx-auto py-8">
+        <div className="container mx-auto pt-4 pb-8">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Create New Event</h1>
                 <p className="text-gray-500 dark:text-gray-400">Fill in the details to launch your next gathering.</p>

@@ -299,7 +299,7 @@ export default function EventDetailsPage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between p-4 border-t border-gray-100 dark:border-zinc-800">
                         <div className="text-sm text-muted-foreground">
-                            Showing <span className="font-medium text-foreground">{((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredGuests.length)}</span> of <span className="font-medium text-foreground">{filteredGuests.length}</span> guests
+                            Showing <span className="font-medium text-foreground">{filteredGuests.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(currentPage * itemsPerPage, filteredGuests.length)}</span> of <span className="font-medium text-foreground">{filteredGuests.length}</span> guests
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -307,7 +307,7 @@ export default function EventDetailsPage() {
                                 size="sm"
                                 className="rounded-lg disabled:opacity-50"
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
+                                disabled={currentPage === 1 || filteredGuests.length === 0}
                             >
                                 Previous
                             </Button>
@@ -316,7 +316,7 @@ export default function EventDetailsPage() {
                                 size="sm"
                                 className="rounded-lg bg-violet-600 hover:bg-violet-700"
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
+                                disabled={currentPage >= totalPages || filteredGuests.length === 0}
                             >
                                 Next
                             </Button>
