@@ -49,10 +49,13 @@ export default function DashboardNavbar() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Button className="bg-primary hover:bg-primary-dark text-white rounded-full px-6 shadow-md hover:shadow-lg transition-all hidden sm:flex">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Event
-                    </Button>
+
+                    <Link href="/dashboard/create-event">
+                        <Button className="bg-primary hover:bg-primary-dark text-white rounded-full px-6 shadow-md hover:shadow-lg transition-all hidden sm:flex">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Event
+                        </Button>
+                    </Link>
                     <Avatar className="w-9 h-9 border border-border cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all">
                         <AvatarImage src={user?.photoURL || ""} alt={user?.displayName || "User"} />
                         <AvatarFallback className="bg-primary/10 text-primary font-bold">
