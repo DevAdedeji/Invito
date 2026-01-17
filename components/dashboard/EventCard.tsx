@@ -2,8 +2,7 @@
 import { Event } from "@/hooks/useEvents";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, ChevronRight } from "lucide-react";
+import { Calendar, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
 
@@ -24,11 +23,6 @@ export default function EventCard({ event }: { event: Event }) {
                             No Image
                         </div>
                     )}
-                    {/* <div className="absolute top-3 right-3">
-                        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-xs font-bold shadow-sm uppercase tracking-wider text-primary">
-                            Featured
-                        </Badge>
-                    </div> */}
                 </div>
 
                 <CardContent className="p-5 flex flex-col flex-grow">

@@ -3,7 +3,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Image as ImageIcon, X, UploadCloud } from "lucide-react";
+import { Image as ImageIcon, X } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 

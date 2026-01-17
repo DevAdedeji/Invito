@@ -9,17 +9,11 @@ import {
     Calendar,
     MapPin,
     Share2,
-    Edit,
     Download,
     Search,
     Filter,
     MoreVertical,
-    ChevronLeft,
-    ChevronRight,
     Users,
-    CheckCircle2,
-    XCircle,
-    HelpCircle,
     Link as LinkIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

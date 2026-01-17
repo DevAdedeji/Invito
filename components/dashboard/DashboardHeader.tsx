@@ -3,7 +3,6 @@
 
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DashboardHeader() {
     const [user] = useAuthState(auth);
