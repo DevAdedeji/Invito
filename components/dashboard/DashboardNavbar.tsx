@@ -15,24 +15,21 @@ export default function DashboardNavbar() {
 
     const links = [
         { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard/analytics", label: "Analytics" },
-        { href: "/dashboard/contacts", label: "Contacts" },
+        // { href: "/dashboard/analytics", label: "Analytics" },
+        // { href: "/dashboard/contacts", label: "Contacts" },
     ];
 
     return (
         <nav className="border-b bg-background sticky top-0 z-50">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-8">
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                        <div className="bg-primary rounded-lg p-1">
-                            {/* Placeholder Logo Icon */}
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                                <circle cx="9" cy="9" r="2" />
-                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                            </svg>
+                    <Link href="/dashboard">
+                        <div className="flex items-center gap-3">
+                            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-white">
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>celebration</span>
+                            </div>
+                            <span className="text-xl font-extrabold tracking-tight text-primary dark:text-primary">Invito</span>
                         </div>
-                        <span className="font-bold text-lg hidden sm:block">EventGallery</span>
                     </Link>
 
                     <div className="hidden md:flex items-center gap-6">
@@ -41,8 +38,8 @@ export default function DashboardNavbar() {
                                 key={link.href}
                                 href={link.href}
                                 className={`text-sm font-medium transition-colors hover:text-primary ${pathname === link.href
-                                        ? "text-primary border-b-2 border-primary py-5"
-                                        : "text-muted-foreground"
+                                    ? "text-primary border-b-2 border-primary py-5 !font-bold"
+                                    : "text-muted-foreground"
                                     }`}
                             >
                                 {link.label}

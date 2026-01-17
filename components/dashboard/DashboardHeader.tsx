@@ -20,13 +20,13 @@ export default function DashboardHeader() {
                 </p>
             </div>
 
-            <Tabs defaultValue="active" className="w-full md:w-auto">
+            {/* <Tabs defaultValue="active" className="w-full md:w-auto">
                 <TabsList className="bg-white/50 dark:bg-muted/20 border border-muted/50 p-1 rounded-full">
                     <TabsTrigger value="active" className="rounded-full px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">Active</TabsTrigger>
                     <TabsTrigger value="drafts" className="rounded-full px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">Drafts</TabsTrigger>
                     <TabsTrigger value="past" className="rounded-full px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">Past</TabsTrigger>
                 </TabsList>
-            </Tabs>
+            </Tabs> */}
         </div>
     );
 }
