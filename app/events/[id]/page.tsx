@@ -11,15 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
-import { addDoc, collection, doc, updateDoc, increment } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc, increment, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useToast } from "@/app/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function PublicEventPage() {
     const params = useParams();
     const eventId = params.id as string;
     const { data: event, isLoading } = useEvent(eventId);
-    const { toast } = useToast();
 
     const [status, setStatus] = useState<"attending" | "not_attending" | "maybe">("attending");
     const [name, setName] = useState("");
@@ -30,46 +29,75 @@ export default function PublicEventPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !email) {
-            toast({
-                title: "Missing Information",
-                description: "Please enter your name and email to RSVP.",
-                variant: "destructive",
-            });
+            toast.error("Please enter your name and email to RSVP.");
             return;
         }
 
         setIsSubmitting(true);
         try {
-            // Add guest to subcollection
-            await addDoc(collection(db, "events", eventId, "guests"), {
-                name,
-                email,
-                status,
-                role: "Guest",
-                guests: 0, // Default 0 extra guests for now
-                rsvpDate: new Date().toISOString(),
-            });
+            // Check if guest already has an RSVP for this event
+            const guestsRef = collection(db, "events", eventId, "guests");
+            const q = query(guestsRef, where("email", "==", email));
+            const querySnapshot = await getDocs(q);
 
-            // Increment attendee count if attending
-            if (status === 'attending') {
-                const eventRef = doc(db, "events", eventId);
-                await updateDoc(eventRef, {
-                    attendees: increment(1)
+            const eventRef = doc(db, "events", eventId);
+
+            if (!querySnapshot.empty) {
+                // Update existing RSVP
+                const guestDoc = querySnapshot.docs[0];
+                const oldStatus = guestDoc.data().status;
+                const guestRef = doc(db, "events", eventId, "guests", guestDoc.id);
+
+                await updateDoc(guestRef, {
+                    name, // Update name in case they fixed a typo
+                    status,
+                    rsvpDate: new Date().toISOString()
                 });
+
+                // Handle attendee count update
+                // If changing FROM attending TO not attending/maybe -> decrement
+                if (oldStatus === 'attending' && status !== 'attending') {
+                    await updateDoc(eventRef, {
+                        attendees: increment(-1)
+                    });
+                }
+                // If changing FROM not attending/maybe TO attending -> increment
+                else if (oldStatus !== 'attending' && status === 'attending') {
+                    await updateDoc(eventRef, {
+                        attendees: increment(1)
+                    });
+                }
+
+                toast.success("RSVP updated successfully!");
+            } else {
+                // Create new RSVP
+                await addDoc(collection(db, "events", eventId, "guests"), {
+                    name,
+                    email,
+                    status,
+                    role: "Guest",
+                    guests: 0,
+                    rsvpDate: new Date().toISOString(),
+                });
+
+                // Increment attendee count if attending
+                if (status === 'attending') {
+                    await updateDoc(eventRef, {
+                        attendees: increment(1)
+                    });
+                }
+
+                if (status === "attending") {
+                    toast.success("We look forward to seeing you there!")
+                } else {
+                    toast.info("Thank you for letting us know.")
+                }
             }
 
             setIsSubmitted(true);
-            toast({
-                title: "RSVP Confirmed!",
-                description: status === 'attending' ? "We look forward to seeing you there!" : "Thank you for letting us know.",
-            });
         } catch (error) {
             console.error("Error submitting RSVP:", error);
-            toast({
-                title: "Error",
-                description: "Failed to submit RSVP. Please try again.",
-                variant: "destructive",
-            });
+            toast.error("Failed to submit RSVP. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -97,10 +125,19 @@ export default function PublicEventPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
             {/* Header / Hero Section */}
-            <div className="relative bg-[#1a0b2e] text-white pt-12 pb-32 px-6 text-center overflow-hidden">
-                {/* Background Glow Effects */}
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl -translate-y-1/2"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2"></div>
+            <div
+                className="relative text-white pt-12 pb-32 px-6 text-center overflow-hidden bg-cover bg-center"
+                style={{
+                    backgroundImage: event.imageUrl ? `url(${event.imageUrl})` : undefined,
+                    backgroundColor: event.imageUrl ? undefined : '#1a0b2e'
+                }}
+            >
+                {/* Overlay for better text readability */}
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
+
+                {/* Background Glow Effects - reduced opacity since we have an image now */}
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl -translate-y-1/2 opacity-50"></div>
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 opacity-50"></div>
 
                 <div className="relative z-10 max-w-2xl mx-auto">
                     <div className="mb-8">
@@ -144,9 +181,14 @@ export default function PublicEventPage() {
                                         <p className="text-gray-500">
                                             {format(new Date(event.date), "h:mm a")} – {format(new Date(new Date(event.date).getTime() + 4 * 60 * 60 * 1000), "h:mm a")} EST
                                         </p>
-                                        <div className="mt-2 flex items-center text-xs font-medium text-purple-600 cursor-pointer hover:underline">
+                                        <a
+                                            href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${format(new Date(event.date), "yyyyMMdd'T'HHmmss")}/${format(new Date(new Date(event.date).getTime() + 4 * 60 * 60 * 1000), "yyyyMMdd'T'HHmmss")}&details=${encodeURIComponent("Join us for " + event.title)}&location=${encodeURIComponent(event.location)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="mt-2 flex items-center text-xs font-medium text-purple-600 cursor-pointer hover:underline"
+                                        >
                                             <span>Add to Calendar</span>
-                                        </div>
+                                        </a>
                                     </div>
                                 </div>
 
@@ -169,23 +211,17 @@ export default function PublicEventPage() {
 
                                         {/* Simple Map Placeholder or Link Button */}
                                         {/* @ts-ignore */}
-                                        {event.locationType === 'online' ? (
-                                            <a href={event.location} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-lg transition-colors">
-                                                <LinkIcon className="w-3 h-3 mr-2" />
-                                                Join Event
-                                            </a>
-                                        ) : (
-                                            <div className="mt-4 rounded-xl overflow-hidden h-32 bg-gray-100 relative group cursor-pointer border border-gray-100">
-                                                {/* Map Pattern / Image */}
-                                                <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-74.006,40.7128,13,0/600x200@2x?access_token=YOUR_TOKEN')] bg-cover bg-center opacity-70 grayscale hover:grayscale-0 transition-all duration-500"></div>
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="bg-white shadow-sm px-4 py-2 rounded-full text-xs font-bold text-gray-800 flex items-center gap-2 group-hover:scale-105 transition-transform">
-                                                        <MapPin className="w-3 h-3 text-purple-600" />
-                                                        View Map
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+
+                                        <a
+                                            href={event.locationType === 'online' ? event.location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="mt-3 inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-lg transition-colors"
+                                        >
+                                            <LinkIcon className="w-3 h-3 mr-2" />
+                                            {/* @ts-ignore */}
+                                            {event.locationType === 'online' ? "Join Event" : "View Map Link"}
+                                        </a>
                                     </div>
                                 </div>
                             </div>

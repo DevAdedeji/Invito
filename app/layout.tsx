@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import "material-symbols/outlined.css";
 import { Toaster } from "@/components/ui/sonner";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 
 
@@ -23,12 +24,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${plusJakartaSans.variable} antialiased`}
-      >
-        {children}
+      <body>
         <Toaster position="top-right" />
-      </body>
-    </html>
+        <QueryProvider>
+          {children}
+        </QueryProvider>
+      </body >
+    </html >
   );
 }

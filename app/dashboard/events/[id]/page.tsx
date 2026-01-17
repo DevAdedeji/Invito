@@ -1,6 +1,7 @@
 
 "use client";
 
+import { toast } from "sonner";
 import { useParams } from "next/navigation";
 import { useEvent, useGuests } from "@/hooks/useEvents";
 import { format } from "date-fns";
@@ -37,6 +38,13 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 export default function EventDetailsPage() {
     const params = useParams();
@@ -49,6 +57,8 @@ export default function EventDetailsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
 
+    const [statusFilter, setStatusFilter] = useState("all");
+
     // Calculate Stats from Real Data
     const guestList = guests || [];
     const stats = {
@@ -58,10 +68,12 @@ export default function EventDetailsPage() {
     };
 
     // Filter Logic
-    const filteredGuests = guestList.filter(guest =>
-        guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        guest.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredGuests = guestList.filter(guest => {
+        const matchesSearch = guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            guest.email.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "all" || guest.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
     // Pagination Logic
     const itemsPerPage = 5;
@@ -77,14 +89,20 @@ export default function EventDetailsPage() {
         }
     };
 
+    const handleShare = () => {
+        const url = `${window.location.origin}/events/${eventId}`;
+        navigator.clipboard.writeText(url);
+        toast.success("Event link copied to clipboard!");
+    };
+
     if (isLoading) {
         return (
             <div className="container mx-auto py-8 space-y-8">
-                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-8 w-1/3 bg-primary opacity-20" />
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" />
+                    <Skeleton className="h-32 bg-primary opacity-20" /><Skeleton className="h-32 bg-primary opacity-20" /><Skeleton className="h-32 bg-primary opacity-20" /><Skeleton className="h-32 bg-primary opacity-20" />
                 </div>
-                <Skeleton className="h-64" />
+                <Skeleton className="h-64 bg-primary opacity-20" />
             </div>
         );
     }
@@ -127,7 +145,10 @@ export default function EventDetailsPage() {
                         Export
                     </Button>
                     {/* User requested to remove Edit button */}
-                    <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
+                    <Button
+                        className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                        onClick={handleShare}
+                    >
                         <Share2 className="w-4 h-4" />
                         Share Event
                     </Button>
@@ -174,9 +195,9 @@ export default function EventDetailsPage() {
                                 <h3 className="text-3xl font-bold text-orange-600 dark:text-orange-400">{stats.maybe}</h3>
                                 <span className="text-xs text-muted-foreground">Pending</span>
                             </div>
-                            <div className="w-full bg-gray-100 h-1 mt-3 rounded-full overflow-hidden">
+                            {/* <div className="w-full bg-gray-100 h-1 mt-3 rounded-full overflow-hidden">
                                 <div className="bg-orange-400 h-full w-[40%] rounded-full"></div>
-                            </div>
+                            </div> */}
                         </div>
                     </CardContent>
                 </Card>
@@ -195,18 +216,21 @@ export default function EventDetailsPage() {
                         />
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" className="rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-muted-foreground">
-                            <Filter className="w-4 h-4 mr-2" />
-                            Status
-                        </Button>
-                        <Button variant="outline" className="rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-muted-foreground">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            RSVP Date
-                        </Button>
-                        <div className="h-10 w-[1px] bg-gray-200 mx-2 hidden sm:block"></div>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground">
-                            <MoreVertical className="w-4 h-4" />
-                        </Button>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[180px] rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                <div className="flex items-center text-muted-foreground">
+                                    <Filter className="w-4 h-4 mr-2" />
+                                    <SelectValue placeholder="Status" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="attending">Attending</SelectItem>
+                                <SelectItem value="not_attending">Not Attending</SelectItem>
+                                <SelectItem value="maybe">Maybe</SelectItem>
+                                <SelectItem value="invited">Invited</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 

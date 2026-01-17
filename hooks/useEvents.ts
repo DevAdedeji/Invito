@@ -13,6 +13,7 @@ export interface Event {
     capacity: number;
     imageUrl?: string;
     status: "active" | "draft" | "past";
+    locationType: "physical" | "online";
 }
 
 const fetchEvents = async (userId: string | undefined): Promise<Event[]> => {
