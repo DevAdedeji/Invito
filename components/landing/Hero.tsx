@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Hero() {
     return (
         <header className="relative overflow-hidden pt-12 pb-20">
@@ -21,13 +23,9 @@ export default function Hero() {
                             Create beautiful event pages, track RSVPs in real-time, and manage guests effortlessly. All the tools you need in one sophisticated dashboard.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center gap-4 mt-4 justify-center lg:justify-start">
-                            <button className="w-full sm:w-auto flex items-center justify-center rounded-xl bg-primary hover:bg-primary-dark text-white text-base font-bold h-12 px-8 transition-all shadow-soft hover:scale-105 active:scale-95">
+                            <Link href="/auth" className="w-full sm:w-auto flex items-center justify-center rounded-xl bg-primary hover:bg-primary-dark text-white text-base font-bold h-12 px-8 transition-all shadow-soft hover:scale-105 active:scale-95">
                                 Create My Event - Free
-                            </button>
-                            <button className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-main dark:text-gray-200 text-base font-bold h-12 px-6 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                                <span className="material-symbols-outlined text-primary" style={{ fontSize: '20px' }}>play_circle</span>
-                                Watch Demo
-                            </button>
+                            </Link>
                         </div>
                         <div className="flex items-center justify-center lg:justify-start gap-4 mt-6 text-sm text-text-secondary dark:text-gray-500">
                             <div className="flex -space-x-2">
