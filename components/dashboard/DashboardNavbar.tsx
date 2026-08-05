@@ -1,67 +1,121 @@
-
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { LogOut, Plus } from "lucide-react";
+import { toast } from "sonner";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { useAuthState } from "react-firebase-hooks/auth";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ThemeToggle from "@/components/shared/ThemeToggle";
+import Wordmark from "@/components/shared/Wordmark";
 import { auth } from "@/lib/firebase";
+import { clearSessionCookie } from "@/lib/session";
 
 export default function DashboardNavbar() {
     const pathname = usePathname();
+    const router = useRouter();
     const [user] = useAuthState(auth);
 
-    const links = [
-        { href: "/dashboard", label: "Dashboard" },
-        // { href: "/dashboard/analytics", label: "Analytics" },
-        // { href: "/dashboard/contacts", label: "Contacts" },
-    ];
+    const initials =
+        user?.displayName
+            ?.split(" ")
+            .map((part) => part[0])
+            .slice(0, 2)
+            .join("") ||
+        user?.email?.[0] ||
+        "?";
+
+    async function handleSignOut() {
+        try {
+            await signOut(auth);
+            clearSessionCookie();
+            router.push("/auth/login");
+        } catch {
+            toast.error("Couldn't sign out. Please try again.");
+        }
+    }
 
     return (
-        <nav className="border-b bg-background sticky top-0 z-50">
-            <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <nav className="border-rule bg-paper/85 sticky top-0 z-50 border-b backdrop-blur-md">
+            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
                 <div className="flex items-center gap-8">
-                    <Link href="/dashboard">
-                        <div className="flex items-center gap-3">
-                            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-white">
-                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>celebration</span>
-                            </div>
-                            <span className="text-xl font-extrabold tracking-tight text-primary dark:text-primary">Invito</span>
-                        </div>
+                    <Link href="/dashboard" aria-label="Invito dashboard">
+                        <Wordmark />
                     </Link>
 
-                    <div className="hidden md:flex items-center gap-6">
-                        {links.map((link) => (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === link.href
-                                    ? "text-primary border-b-2 border-primary py-5 !font-bold"
-                                    : "text-muted-foreground"
-                                    }`}
-                            >
-                                {link.label}
-                            </Link>
-                        ))}
-                    </div>
+                    <Link
+                        href="/dashboard"
+                        className={`meta hidden transition-colors sm:inline ${pathname === "/dashboard"
+                            ? "text-ink"
+                            : "text-ink-faint hover:text-ink"
+                            }`}
+                    >
+                        Events
+                    </Link>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <ThemeToggle />
 
-                    <Link href="/dashboard/create-event">
-                        <Button className="bg-primary hover:bg-primary-dark text-white rounded-full px-6 shadow-md hover:shadow-lg transition-all hidden sm:flex">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Event
-                        </Button>
-                    </Link>
-                    <Avatar className="w-9 h-9 border border-border cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all">
-                        <AvatarImage src={user?.photoURL || ""} alt={user?.displayName || "User"} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                            {user?.displayName?.charAt(0) || "U"}
-                        </AvatarFallback>
-                    </Avatar>
+                    <Button asChild size="sm" className="hidden sm:inline-flex">
+                        <Link href="/dashboard/create-event">
+                            <Plus />
+                            New invitation
+                        </Link>
+                    </Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                className="ml-1 rounded-full"
+                                aria-label="Account menu"
+                            >
+                                <Avatar className="size-9">
+                                    <AvatarImage
+                                        src={user?.photoURL || ""}
+                                        alt={user?.displayName || "Your avatar"}
+                                    />
+                                    <AvatarFallback>{initials}</AvatarFallback>
+                                </Avatar>
+                            </button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>
+                                {user?.displayName || "Signed in"}
+                            </DropdownMenuLabel>
+                            {user?.email && (
+                                <p className="text-ink-faint truncate px-2.5 pb-2 text-xs">
+                                    {user.email}
+                                </p>
+                            )}
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem asChild className="sm:hidden">
+                                <Link href="/dashboard/create-event">
+                                    <Plus />
+                                    New invitation
+                                </Link>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem onSelect={handleSignOut}>
+                                <LogOut />
+                                Sign out
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
         </nav>

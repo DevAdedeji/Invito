@@ -1,42 +1,84 @@
+const STEPS = [
+    {
+        number: "01",
+        title: "Set the scene",
+        body: "Title, host, date, place, a cover if you want one. A live preview shows the invitation taking shape as you type.",
+    },
+    {
+        number: "02",
+        title: "Share one link",
+        body: "It unfurls properly in messages and inboxes — your event's own title, date and cover, not a generic card.",
+    },
+    {
+        number: "03",
+        title: "Watch the replies",
+        body: "Accepts, maybes and regrets land in one table with plus-ones, dietary notes and anything else you asked.",
+    },
+];
+
+const DETAILS = [
+    {
+        title: "Plus-ones, counted properly",
+        body: "Let guests bring people, cap how many, and see a headcount that already includes them.",
+    },
+    {
+        title: "Capacity and a waitlist",
+        body: "Set a limit and Invito stops overselling it. Turn on the waitlist and late replies queue instead of bouncing.",
+    },
+    {
+        title: "Ask your own questions",
+        body: "Dietary needs, song requests, which session they want. Answers arrive alongside each reply.",
+    },
+    {
+        title: "Guests can amend",
+        body: "Plans change. A guest replies again with the same email and their answer updates — no account needed.",
+    },
+    {
+        title: "A note wall and a gallery",
+        body: "Optional. Let guests leave messages before, and add photos after.",
+    },
+    {
+        title: "Export and announce",
+        body: "Take the guest list as CSV, or send everyone an update without leaving the dashboard.",
+    },
+];
+
 export default function Features() {
     return (
-        <section id="features" className="py-20 bg-white dark:bg-surface-dark relative">
-            <div className="mx-auto max-w-[1280px] px-6">
-                <div className="flex flex-col gap-4 mb-16 text-center max-w-2xl mx-auto">
-                    <h2 className="text-3xl md:text-4xl font-extrabold text-text-main dark:text-white tracking-tight">Everything you need to host perfectly</h2>
-                    <p className="text-text-secondary dark:text-gray-400 text-lg">Powerful tools wrapped in a simple design to make your event planning seamless and sophisticated.</p>
+        <section id="how" className="border-rule border-t">
+            <div className="mx-auto max-w-5xl px-6 py-24">
+                <p className="eyebrow eyebrow-left">How it works</p>
+
+                <div className="mt-14 grid gap-12 sm:grid-cols-3 sm:gap-10">
+                    {STEPS.map((step) => (
+                        <div key={step.number}>
+                            <p className="meta text-seal">{step.number}</p>
+                            <h3 className="font-display mt-4 text-2xl">{step.title}</h3>
+                            <p className="text-ink-muted mt-3 text-sm leading-[1.75]">
+                                {step.body}
+                            </p>
+                        </div>
+                    ))}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="group bg-background-light dark:bg-background-dark rounded-2xl p-8 border border-gray-100 dark:border-gray-800 hover:shadow-hover transition-all duration-300 transform hover:-translate-y-1">
-                        <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
-                            <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>mark_email_unread</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-text-main dark:text-white mb-3">Real-time RSVPs</h3>
-                        <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                            Watch your guest list grow with instant notifications sent right to your phone. Know exactly who's coming.
-                        </p>
-                    </div>
-                    <div className="group bg-background-light dark:bg-background-dark rounded-2xl p-8 border border-gray-100 dark:border-gray-800 hover:shadow-hover transition-all duration-300 transform hover:-translate-y-1">
-                        <div className="size-14 rounded-2xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-6 group-hover:scale-110 transition-transform">
-                            <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>palette</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-text-main dark:text-white mb-3">Beautiful Themes</h3>
-                        <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                            Choose from designer-curated styles that match your vibe and impress your guests from the first click.
-                        </p>
-                    </div>
-                    <div className="group bg-background-light dark:bg-background-dark rounded-2xl p-8 border border-gray-100 dark:border-gray-800 hover:shadow-hover transition-all duration-300 transform hover:-translate-y-1">
-                        <div className="size-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                            <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>forum</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-text-main dark:text-white mb-3">Guest Messaging</h3>
-                        <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                            Send updates, reminders, and thank you notes with a single click. Keep everyone in the loop effortlessly.
-                        </p>
-                    </div>
+
+                <div className="border-rule mt-24 border-t pt-16">
+                    <p className="eyebrow eyebrow-left">The details</p>
+
+                    <dl className="divide-rule mt-10 divide-y">
+                        {DETAILS.map((detail) => (
+                            <div
+                                key={detail.title}
+                                className="grid gap-2 py-7 sm:grid-cols-[minmax(0,18rem)_1fr] sm:gap-10"
+                            >
+                                <dt className="font-display text-xl">{detail.title}</dt>
+                                <dd className="text-ink-muted text-sm leading-[1.75]">
+                                    {detail.body}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
                 </div>
             </div>
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent"></div>
         </section>
-    )
+    );
 }

@@ -1,56 +1,72 @@
-
-import { Event } from "@/hooks/useEvents";
-import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, ChevronRight } from "lucide-react";
 import Image from "next/image";
-import { format } from "date-fns";
+import Link from "next/link";
+import { ArrowUpRight, ImageOff } from "lucide-react";
 
-export default function EventCard({ event }: { event: Event }) {
+import { Badge } from "@/components/ui/badge";
+import { formatShortDate, formatTime } from "@/lib/datetime";
+import { isFull, isPast } from "@/lib/events";
+import type { InvitoEvent } from "@/lib/types";
+
+export default function EventCard({ event }: { event: InvitoEvent }) {
+    const past = isPast(event);
+    const full = isFull(event);
+
     return (
-        <Link href={`/dashboard/events/${event.id}`}>
-            <Card className="overflow-hidden border-none shadow-soft hover:shadow-hover transition-all duration-300 group cursor-pointer h-full flex flex-col !pt-0">
-                <div className="relative h-48 w-full bg-muted">
-                    {event.imageUrl ? (
-                        <Image
-                            src={event.imageUrl}
-                            alt={event.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-muted-foreground/30">
-                            No Image
-                        </div>
-                    )}
+        <Link
+            href={`/dashboard/events/${event.id}`}
+            className="group border-rule hover:border-ink flex flex-col border transition-colors"
+        >
+            <div className="bg-paper-sunken relative aspect-16/10 w-full overflow-hidden">
+                {event.imageUrl ? (
+                    <Image
+                        src={event.imageUrl}
+                        alt=""
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+                ) : (
+                    <div className="text-ink-faint flex h-full items-center justify-center">
+                        <ImageOff className="size-5" />
+                    </div>
+                )}
+
+                <div className="absolute top-3 left-3 flex gap-1.5">
+                    {event.status === "draft" && <Badge variant="secondary">Draft</Badge>}
+                    {past ? (
+                        <Badge variant="declined">Past</Badge>
+                    ) : full ? (
+                        <Badge variant="seal">Full</Badge>
+                    ) : null}
                 </div>
+            </div>
 
-                <CardContent className="p-5 flex flex-col flex-grow">
-                    <h3 className="font-bold text-lg mb-2 text-foreground group-hover:text-primary transition-colors line-clamp-1">{event.title}</h3>
+            <div className="flex flex-1 flex-col p-5">
+                <p className="meta text-ink-faint">
+                    {formatShortDate(event.date, event.timezone)} ·{" "}
+                    {formatTime(event.date, event.timezone)}
+                </p>
 
-                    <div className="flex items-center text-sm text-muted-foreground mb-4">
-                        <Calendar className="w-4 h-4 mr-2 text-primary/70" />
-                        <span>{format(new Date(event.date), "MMM dd, yyyy • p")}</span>
+                <h3 className="font-display group-hover:text-seal mt-2.5 line-clamp-2 text-xl transition-colors">
+                    {event.title}
+                </h3>
+
+                <div className="border-rule mt-auto flex items-end justify-between border-t pt-4">
+                    <div>
+                        <p className="meta text-ink-faint">Attending</p>
+                        <p className="font-display mt-1 text-2xl tabular-nums">
+                            {event.attendees}
+                            {event.capacity > 0 && (
+                                <span className="text-ink-faint text-base">
+                                    {" "}
+                                    / {event.capacity}
+                                </span>
+                            )}
+                        </p>
                     </div>
-
-                    <div className="mt-auto">
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                                    {event.status === 'active' ? 'Attending' : event.status === 'draft' ? 'Pending' : 'Capacity'}
-                                </h4>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-lg font-bold text-foreground">{event.attendees}</span>
-                                    <span className="text-xs text-muted-foreground">/ {event.capacity}</span>
-                                </div>
-                            </div>
-                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                <ChevronRight className="w-4 h-4" />
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    <ArrowUpRight className="text-ink-faint group-hover:text-ink size-4 transition-colors" />
+                </div>
+            </div>
         </Link>
     );
 }

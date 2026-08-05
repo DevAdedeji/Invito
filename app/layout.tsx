@@ -1,68 +1,81 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import "material-symbols/outlined.css";
 import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/components/providers/QueryProvider";
+import ThemeProvider from "@/components/providers/ThemeProvider";
 
-
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta-sans",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  axes: ["SOFT", "WONK", "opsz"],
+  display: "swap",
 });
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+});
+
+const SITE_URL = "https://invito.adedeji.xyz";
 
 export const metadata: Metadata = {
   title: {
-    default: "Invito - Modern Event Management Platform",
-    template: "%s | Invito",
+    default: "Invito — Invitations worth opening",
+    template: "%s · Invito",
   },
-  description: "Create, manage, and share events with ease. Invito provides a seamless experience for RSVPs, guest tracking, and event planning.",
-  keywords: ["Event Management", "RSVP", "Event Planner", "Invito", "Next.js", "React", "Firebase"],
-  authors: [{ name: "Invito Team" }],
+  description:
+    "Create an invitation people actually want to open, share one link, and watch the replies come in. Free to start.",
+  keywords: ["invitations", "RSVP", "event planning", "guest list", "Invito"],
+  authors: [{ name: "Invito" }],
   creator: "Invito",
-  metadataBase: new URL('https://invito.adedeji.xyz'),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://invito.adedeji.xyz",
-    title: "Invito - Modern Event Management Platform",
-    description: "The easiest way to manage your events. Create beautiful invitations, track RSVPs, and manage guests in one place.",
+    url: SITE_URL,
+    title: "Invito — Invitations worth opening",
+    description:
+      "Create an invitation people actually want to open, share one link, and watch the replies come in.",
     siteName: "Invito",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Invito Preview",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Invito - Event Management Made Simple",
-    description: "Create, manage, and share events effortlessly with Invito.",
-    images: ["/og-image.png"],
-    creator: "@invitoapp",
+    title: "Invito — Invitations worth opening",
+    description:
+      "Create an invitation people actually want to open, share one link, and watch the replies come in.",
   },
-  icons: {
-    icon: "/favicon.ico",
-  },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
       <body>
-        <Toaster position="top-right" />
-        <QueryProvider>
-          {children}
-        </QueryProvider>
-      </body >
-    </html >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>{children}</QueryProvider>
+          <Toaster position="top-center" />
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

@@ -1,348 +1,252 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { CalendarPlus, ExternalLink, MapPin, Video } from "lucide-react";
 
-"use client";
-
-import { useParams } from "next/navigation";
-import { useEvent } from "@/hooks/useEvents";
-import { format } from "date-fns";
-import { Calendar, MapPin, CheckCircle2, XCircle, HelpCircle, ArrowRight, Loader2, Link as LinkIcon } from "lucide-react";
+import RsvpCard from "@/components/event/RsvpCard";
+import Discussion from "@/components/event/Discussion";
+import Gallery from "@/components/event/Gallery";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup } from "@/components/ui/radio-group";
-import { useState } from "react";
-import { addDoc, collection, doc, updateDoc, increment, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { toast } from "sonner";
+import {
+    formatLongDate,
+    formatShortDate,
+    formatTimeRange,
+    googleCalendarUrl,
+} from "@/lib/datetime";
+import { eventTypeLabel, isPast } from "@/lib/events";
+import { fetchEventServer, fetchPublicAttendeesServer } from "@/lib/firestore-rest";
 
-export default function PublicEventPage() {
-    const params = useParams();
-    const eventId = params.id as string;
-    const { data: event, isLoading } = useEvent(eventId);
+interface PageProps {
+    params: Promise<{ id: string }>;
+}
 
-    const [status, setStatus] = useState<"attending" | "not_attending" | "maybe">("attending");
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!name || !email) {
-            toast.error("Please enter your name and email to RSVP.");
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            // Check if guest already has an RSVP for this event
-            const guestsRef = collection(db, "events", eventId, "guests");
-            const q = query(guestsRef, where("email", "==", email));
-            const querySnapshot = await getDocs(q);
-
-            const eventRef = doc(db, "events", eventId);
-
-            if (!querySnapshot.empty) {
-                // Update existing RSVP
-                const guestDoc = querySnapshot.docs[0];
-                const oldStatus = guestDoc.data().status;
-                const guestRef = doc(db, "events", eventId, "guests", guestDoc.id);
-
-                await updateDoc(guestRef, {
-                    name, // Update name in case they fixed a typo
-                    status,
-                    rsvpDate: new Date().toISOString()
-                });
-
-                // Handle attendee count update
-                // If changing FROM attending TO not attending/maybe -> decrement
-                if (oldStatus === 'attending' && status !== 'attending') {
-                    await updateDoc(eventRef, {
-                        attendees: increment(-1)
-                    });
-                }
-                // If changing FROM not attending/maybe TO attending -> increment
-                else if (oldStatus !== 'attending' && status === 'attending') {
-                    await updateDoc(eventRef, {
-                        attendees: increment(1)
-                    });
-                }
-
-                toast.success("RSVP updated successfully!");
-            } else {
-                // Create new RSVP
-                await addDoc(collection(db, "events", eventId, "guests"), {
-                    name,
-                    email,
-                    status,
-                    role: "Guest",
-                    guests: 0,
-                    rsvpDate: new Date().toISOString(),
-                });
-
-                // Increment attendee count if attending
-                if (status === 'attending') {
-                    await updateDoc(eventRef, {
-                        attendees: increment(1)
-                    });
-                }
-
-                if (status === "attending") {
-                    toast.success("We look forward to seeing you there!")
-                } else {
-                    toast.info("Thank you for letting us know.")
-                }
-            }
-
-            setIsSubmitted(true);
-        } catch (error) {
-            console.error("Error submitting RSVP:", error);
-            toast.error("Failed to submit RSVP. Please try again.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#1a0b2e]">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
-            </div>
-        );
-    }
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const { id } = await params;
+    const event = await fetchEventServer(id, 60);
 
     if (!event) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#1a0b2e] text-white">
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
-                    <p className="text-gray-400">This event link may be invalid or expired.</p>
-                </div>
-            </div>
-        );
+        return { title: "Invitation not found" };
     }
 
+    const when = formatLongDate(event.date, event.timezone);
+    const where = event.locationType === "online" ? "Online" : event.location || "";
+    const description =
+        event.description?.slice(0, 180) ||
+        `${when}${where ? ` · ${where}` : ""}. Kindly reply.`;
+
+    return {
+        title: event.title,
+        description,
+        openGraph: {
+            type: "website",
+            title: event.title,
+            description,
+            siteName: "Invito",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: event.title,
+            description,
+        },
+    };
+}
+
+export default async function PublicEventPage({ params }: PageProps) {
+    const { id } = await params;
+    const event = await fetchEventServer(id);
+
+    if (!event) notFound();
+
+    const attendees = event.guestListPublic
+        ? await fetchPublicAttendeesServer(id)
+        : [];
+
+    const past = isPast(event);
+    const mapUrl =
+        event.locationType === "online"
+            ? event.location
+            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                event.location
+            )}`;
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-            {/* Header / Hero Section */}
-            <div
-                className="relative text-white pt-12 pb-32 px-6 text-center overflow-hidden bg-cover bg-center"
-                style={{
-                    backgroundImage: event.imageUrl ? `url(${event.imageUrl})` : undefined,
-                    backgroundColor: event.imageUrl ? undefined : '#1a0b2e'
-                }}
+        <main className="bg-paper min-h-screen">
+            {event.imageUrl && (
+                <div className="relative h-[38vh] min-h-64 w-full sm:h-[46vh]">
+                    <Image
+                        src={event.imageUrl}
+                        alt=""
+                        fill
+                        priority
+                        sizes="100vw"
+                        className="object-cover"
+                    />
+                    <div className="from-paper absolute inset-x-0 bottom-0 h-40 bg-linear-to-t to-transparent" />
+                </div>
+            )}
+
+            <article
+                className={`mx-auto w-full max-w-2xl px-6 pb-24 ${event.imageUrl ? "pt-14" : "pt-20"
+                    }`}
             >
-                {/* Overlay for better text readability */}
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
+                <header className="text-center">
+                    <p className="eyebrow justify-center">
+                        {past ? "This gathering has passed" : "You're invited"}
+                    </p>
 
-                {/* Background Glow Effects - reduced opacity since we have an image now */}
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl -translate-y-1/2 opacity-50"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 opacity-50"></div>
+                    <h1 className="font-display mt-8 text-[2.75rem] leading-[1.05] text-balance sm:text-6xl">
+                        {event.title}
+                    </h1>
 
-                <div className="relative z-10 max-w-2xl mx-auto">
-                    <div className="mb-8">
-                        {/* Logo / Brand Placeholder */}
-                        <div className="flex justify-center items-center gap-2 mb-8 opacity-90">
-                            <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center text-xs font-bold">I</div>
-                            <span className="text-sm font-bold tracking-widest uppercase">Invito Events</span>
-                        </div>
-
-                        <div className="inline-block px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 backdrop-blur-sm text-xs font-semibold tracking-wider uppercase mb-6 text-purple-200">
-                            Exclusive Invitation
-                        </div>
-
-                        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-                            {event.title}
-                        </h1>
-
-                        <p className="text-lg text-purple-100/80 leading-relaxed max-w-xl mx-auto">
-                            You are cordially invited to join us for this special occasion.
+                    {event.hostName && (
+                        <p className="text-ink-muted mt-6 text-base">
+                            Hosted by{" "}
+                            <span className="text-ink decoration-seal/50 underline decoration-1 underline-offset-4">
+                                {event.hostName}
+                            </span>
                         </p>
-                    </div>
-                </div>
-            </div>
+                    )}
 
-            {/* Content Section - Overlapping Cards */}
-            <div className="flex-grow px-4 pb-16 -mt-20 relative z-20">
-                <div className="max-w-xl mx-auto space-y-6">
+                    <p className="meta text-ink-faint mt-4">
+                        {eventTypeLabel(event.eventType)}
+                    </p>
+                </header>
 
-                    {/* Event Details Card */}
-                    <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
-                        <CardContent className="p-0">
-                            <div className="bg-white p-6 md:p-8 space-y-6">
-                                <div className="flex items-start gap-4">
-                                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-                                        <Calendar className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 text-lg mb-1">
-                                            {format(new Date(event.date), "EEEE, MMMM do")}
-                                        </h3>
-                                        <p className="text-gray-500">
-                                            {format(new Date(event.date), "h:mm a")} – {format(new Date(new Date(event.date).getTime() + 4 * 60 * 60 * 1000), "h:mm a")} EST
-                                        </p>
-                                        <a
-                                            href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${format(new Date(event.date), "yyyyMMdd'T'HHmmss")}/${format(new Date(new Date(event.date).getTime() + 4 * 60 * 60 * 1000), "yyyyMMdd'T'HHmmss")}&details=${encodeURIComponent("Join us for " + event.title)}&location=${encodeURIComponent(event.location)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-2 flex items-center text-xs font-medium text-purple-600 cursor-pointer hover:underline"
-                                        >
-                                            <span>Add to Calendar</span>
+                <section className="border-rule divide-rule mt-14 divide-y border-t">
+                    <div className="flex flex-col gap-1 py-7 sm:flex-row sm:items-baseline sm:gap-8">
+                        <p className="meta text-ink-faint sm:w-24 sm:shrink-0">When</p>
+                        <div>
+                            <p className="font-display text-2xl">
+                                {formatLongDate(event.date, event.timezone)}
+                            </p>
+                            <p className="text-ink-muted mt-1.5 text-sm">
+                                {formatTimeRange(event.date, event.endDate, event.timezone)}
+                            </p>
+                            {!past && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <Button asChild variant="subtle" size="sm">
+                                        <a href={`/events/${event.id}/calendar`}>
+                                            <CalendarPlus />
+                                            Add to calendar
                                         </a>
-                                    </div>
-                                </div>
-
-                                <div className="h-px bg-gray-100 w-full"></div>
-
-                                <div className="flex items-start gap-4">
-                                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-                                        {/* @ts-ignore */}
-                                        {event.locationType === 'online' ? <LinkIcon className="w-6 h-6" /> : <MapPin className="w-6 h-6" />}
-                                    </div>
-                                    <div className="flex-grow">
-                                        <h3 className="font-bold text-gray-900 text-lg mb-1">
-                                            {/* @ts-ignore */}
-                                            {event.locationType === 'online' ? "Online Event" : event.location}
-                                        </h3>
-                                        <p className="text-gray-500 text-sm">
-                                            {/* @ts-ignore */}
-                                            {event.locationType === 'online' ? "Join via the link below" : "See map for directions"}
-                                        </p>
-
-                                        {/* Simple Map Placeholder or Link Button */}
-                                        {/* @ts-ignore */}
-
-                                        <a
-                                            href={event.locationType === 'online' ? event.location : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-3 inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-lg transition-colors"
-                                        >
-                                            <LinkIcon className="w-3 h-3 mr-2" />
-                                            {/* @ts-ignore */}
-                                            {event.locationType === 'online' ? "Join Event" : "View Map Link"}
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* RSVP Form Card */}
-                    <Card className="border-none shadow-xl rounded-2xl overflow-hidden relative">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
-                        <CardContent className="p-6 md:p-8 bg-white">
-                            {isSubmitted ? (
-                                <div className="text-center py-12">
-                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in-50 duration-300">
-                                        <CheckCircle2 className="w-8 h-8" />
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Response Sent!</h3>
-                                    <p className="text-gray-500">
-                                        {status === 'attending'
-                                            ? "You're on the list! We've sent a confirmation email to " + email
-                                            : "Thank you for letting us know."}
-                                    </p>
-                                </div>
-                            ) : (
-                                <form onSubmit={handleSubmit} className="space-y-8">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Will you be joining us?</h2>
-
-                                        <RadioGroup value={status} onValueChange={(val: any) => setStatus(val)} className="space-y-3">
-                                            <div className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${status === 'attending' ? 'border-purple-600 bg-purple-50/50' : 'border-gray-100 hover:border-gray-200'}`} onClick={() => setStatus('attending')}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${status === 'attending' ? 'border-purple-600 bg-purple-600' : 'border-gray-300'}`}>
-                                                        {status === 'attending' && <div className="w-2 h-2 bg-white rounded-full" />}
-                                                    </div>
-                                                    <span className={`font-semibold ${status === 'attending' ? 'text-purple-900' : 'text-gray-700'}`}>Joyfully Accept</span>
-                                                </div>
-                                                {status === 'attending' && <CheckCircle2 className="w-5 h-5 text-purple-600" />}
-                                            </div>
-
-                                            <div className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${status === 'not_attending' ? 'border-gray-400 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`} onClick={() => setStatus('not_attending')}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${status === 'not_attending' ? 'border-gray-500 bg-gray-500' : 'border-gray-300'}`}>
-                                                        {status === 'not_attending' && <div className="w-2 h-2 bg-white rounded-full" />}
-                                                    </div>
-                                                    <span className={`font-medium ${status === 'not_attending' ? 'text-gray-900' : 'text-gray-700'}`}>Regretfully Decline</span>
-                                                </div>
-                                                {status === 'not_attending' && <XCircle className="w-5 h-5 text-gray-400" />}
-                                            </div>
-
-                                            <div className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${status === 'maybe' ? 'border-orange-400 bg-orange-50' : 'border-gray-100 hover:border-gray-200'}`} onClick={() => setStatus('maybe')}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${status === 'maybe' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
-                                                        {status === 'maybe' && <div className="w-2 h-2 bg-white rounded-full" />}
-                                                    </div>
-                                                    <span className={`font-medium ${status === 'maybe' ? 'text-orange-900' : 'text-gray-700'}`}>Hope to make it</span>
-                                                </div>
-                                                {status === 'maybe' && <HelpCircle className="w-5 h-5 text-orange-400" />}
-                                            </div>
-                                        </RadioGroup>
-                                    </div>
-
-                                    <div className="space-y-4 pt-2 animate-in slide-in-from-top-4 duration-500">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
-                                            <Input
-                                                id="name"
-                                                placeholder="e.g. Jane Doe"
-                                                className="bg-gray-50 border-gray-200 focus:border-purple-500 focus:ring-purple-500 h-11"
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="e.g. jane@example.com"
-                                                className="bg-gray-50 border-gray-200 focus:border-purple-500 focus:ring-purple-500 h-11"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Button
-                                        type="submit"
-                                        className="w-full h-12 text-base font-bold bg-[#4a1d96] hover:bg-[#3b1778] text-white rounded-xl shadow-lg hover:shadow-xl transition-all"
-                                        disabled={isSubmitting}
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Confirming...
-                                            </>
-                                        ) : (
-                                            <>
-                                                Confirm RSVP
-                                                <ArrowRight className="w-4 h-4 ml-2" />
-                                            </>
-                                        )}
                                     </Button>
-
-                                    <p className="text-xs text-center text-gray-400 mt-4">
-                                        By clicking confirm, you agree to our Event Terms.
-                                    </p>
-                                </form>
+                                    <Button asChild variant="ghost" size="sm">
+                                        <a
+                                            href={googleCalendarUrl({
+                                                title: event.title,
+                                                description:
+                                                    event.description ??
+                                                    `You're invited to ${event.title}.`,
+                                                location: event.location,
+                                                startIso: event.date,
+                                                endIso: event.endDate,
+                                            })}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Google Calendar
+                                        </a>
+                                    </Button>
+                                </div>
                             )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                        </div>
+                    </div>
 
-            {/* Footer */}
-            <div className="py-8 text-center text-gray-400 text-sm">
-                <div className="flex justify-center gap-6 mb-4">
-                    <span>Questions? Contact the host</span>
+                    <div className="flex flex-col gap-1 py-7 sm:flex-row sm:items-baseline sm:gap-8">
+                        <p className="meta text-ink-faint sm:w-24 sm:shrink-0">Where</p>
+                        <div className="min-w-0">
+                            <p className="font-display text-2xl wrap-break-word">
+                                {event.locationType === "online"
+                                    ? "Online"
+                                    : event.location || "To be announced"}
+                            </p>
+                            {event.location && (
+                                <a
+                                    href={mapUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-seal decoration-seal/40 hover:decoration-seal mt-3 inline-flex items-center gap-2 text-sm underline underline-offset-4"
+                                >
+                                    {event.locationType === "online" ? (
+                                        <>
+                                            <Video className="size-3.5" />
+                                            Join link
+                                        </>
+                                    ) : (
+                                        <>
+                                            <MapPin className="size-3.5" />
+                                            View on map
+                                        </>
+                                    )}
+                                    <ExternalLink className="size-3" />
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                {event.description && (
+                    <section className="mt-12">
+                        <p className="dropcap text-ink-muted text-[15px] leading-[1.8] whitespace-pre-line">
+                            {event.description}
+                        </p>
+                    </section>
+                )}
+
+                {event.guestListPublic && attendees.length > 0 && (
+                    <section className="border-rule mt-14 border-t pt-12">
+                        <p className="eyebrow eyebrow-left">
+                            Who&rsquo;s coming ·{" "}
+                            {attendees.reduce((sum, a) => sum + 1 + a.plusOnes, 0)}
+                        </p>
+                        <ul className="mt-6 flex flex-wrap gap-x-3 gap-y-2">
+                            {attendees.map((attendee) => (
+                                <li
+                                    key={attendee.id}
+                                    className="border-rule text-ink-muted rounded-xs border px-3 py-1.5 text-sm"
+                                >
+                                    {attendee.firstName}
+                                    {attendee.plusOnes > 0 && (
+                                        <span className="text-ink-faint">
+                                            {" "}
+                                            +{attendee.plusOnes}
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
+                <div className="mt-14">
+                    <RsvpCard event={event} />
                 </div>
-                <p>Powered by <span className="font-bold text-gray-600">Invito™</span></p>
-            </div>
-        </div>
+
+                {event.discussionEnabled && (
+                    <div className="mt-14">
+                        <Discussion eventId={event.id} />
+                    </div>
+                )}
+
+                {event.galleryEnabled && (
+                    <div className="mt-14">
+                        <Gallery eventId={event.id} />
+                    </div>
+                )}
+
+                <footer className="border-rule mt-20 border-t pt-8 text-center">
+                    <p className="meta text-ink-faint">
+                        {formatShortDate(event.date, event.timezone)}
+                    </p>
+                    <Link
+                        href="/"
+                        className="meta text-ink-faint hover:text-ink mt-4 inline-block transition-colors"
+                    >
+                        Made with Invito
+                    </Link>
+                </footer>
+            </article>
+        </main>
     );
 }

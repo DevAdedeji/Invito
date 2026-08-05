@@ -1,24 +1,49 @@
-
 "use client";
 
-import { toast } from "sonner";
-import { useParams } from "next/navigation";
-import { useEvent, useGuests } from "@/hooks/useEvents";
-import { format } from "date-fns";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import {
-    Calendar,
-    MapPin,
-    Share2,
+    Copy,
     Download,
-    Search,
-    Filter,
-    MoreVertical,
+    ExternalLink,
+    Loader2,
+    MoreHorizontal,
+    Pencil,
+    Send,
+    Share2,
+    Trash2,
     Users,
-    Link as LinkIcon
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+import AnnounceDialog from "@/components/dashboard/AnnounceDialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Table,
     TableBody,
@@ -27,321 +52,487 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    useDeleteEvent,
+    useDuplicateEvent,
+    useEvent,
+    useGuests,
+    useRemoveGuest,
+} from "@/hooks/useEvents";
+import { downloadCsv, guestsToCsv } from "@/lib/csv";
+import { formatLongDate, formatShortDate, formatTimeRange } from "@/lib/datetime";
+import { isPast, rsvpStatusLabel } from "@/lib/events";
+import type { Guest, RsvpStatus } from "@/lib/types";
+
+const STATUS_VARIANT: Record<
+    RsvpStatus,
+    "attending" | "maybe" | "declined" | "seal"
+> = {
+    attending: "attending",
+    maybe: "maybe",
+    not_attending: "declined",
+    waitlisted: "seal",
+};
 
 export default function EventDetailsPage() {
     const params = useParams();
+    const router = useRouter();
     const eventId = params.id as string;
-    const { data: event, isLoading: isLoadingEvent } = useEvent(eventId);
-    const { data: guests, isLoading: isLoadingGuests } = useGuests(eventId);
 
-    const isLoading = isLoadingEvent || isLoadingGuests;
+    const { data: event, isLoading: loadingEvent } = useEvent(eventId);
+    const { data: guests, isLoading: loadingGuests } = useGuests(eventId);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [searchQuery, setSearchQuery] = useState("");
+    const deleteEvent = useDeleteEvent();
+    const duplicateEvent = useDuplicateEvent();
+    const removeGuest = useRemoveGuest(eventId);
 
-    const [statusFilter, setStatusFilter] = useState("all");
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | RsvpStatus>("all");
+    const [announceOpen, setAnnounceOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
-    // Calculate Stats from Real Data
-    const guestList = guests || [];
-    const stats = {
-        attending: guestList.filter(g => g.status === 'attending').length,
-        notAttending: guestList.filter(g => g.status === 'not_attending').length,
-        maybe: guestList.filter(g => g.status === 'maybe').length
-    };
+    const guestList = useMemo(() => guests ?? [], [guests]);
 
-    // Filter Logic
-    const filteredGuests = guestList.filter(guest => {
-        const matchesSearch = guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            guest.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || guest.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    const stats = useMemo(() => {
+        const attending = guestList.filter((g) => g.status === "attending");
+        return {
+            replies: guestList.length,
+            attending: attending.length,
+            heads: attending.reduce((sum, g) => sum + 1 + g.plusOnes, 0),
+            plusOnes: attending.reduce((sum, g) => sum + g.plusOnes, 0),
+            maybe: guestList.filter((g) => g.status === "maybe").length,
+            declined: guestList.filter((g) => g.status === "not_attending").length,
+            waitlisted: guestList.filter((g) => g.status === "waitlisted").length,
+        };
+    }, [guestList]);
 
-    // Pagination Logic
-    const itemsPerPage = 5;
-    const totalPages = Math.ceil(filteredGuests.length / itemsPerPage);
-    const currentGuests = filteredGuests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const filtered = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return guestList.filter((guest) => {
+            const matchesTerm =
+                !term ||
+                guest.name.toLowerCase().includes(term) ||
+                guest.email.toLowerCase().includes(term);
+            const matchesStatus =
+                statusFilter === "all" || guest.status === statusFilter;
+            return matchesTerm && matchesStatus;
+        });
+    }, [guestList, search, statusFilter]);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'attending': return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300';
-            case 'not_attending': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
-            case 'maybe': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300';
-            default: return 'bg-gray-100 text-gray-700';
-        }
-    };
-
-    const handleShare = () => {
-        const url = `${window.location.origin}/events/${eventId}`;
-        navigator.clipboard.writeText(url);
-        toast.success("Event link copied to clipboard!");
-    };
-
-    if (isLoading) {
+    if (loadingEvent) {
         return (
-            <div className="container mx-auto py-8 space-y-8">
-                <Skeleton className="h-8 w-1/3 bg-primary opacity-20" />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Skeleton className="h-32 bg-primary opacity-20" /><Skeleton className="h-32 bg-primary opacity-20" /><Skeleton className="h-32 bg-primary opacity-20" /><Skeleton className="h-32 bg-primary opacity-20" />
-                </div>
-                <Skeleton className="h-64 bg-primary opacity-20" />
+            <div className="space-y-8">
+                <Skeleton className="h-16 w-96" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-80 w-full" />
             </div>
         );
     }
 
     if (!event) {
-        return <div className="p-8 text-center">Event not found</div>;
+        return (
+            <div className="border-rule border border-dashed py-24 text-center">
+                <p className="font-display text-2xl">Event not found</p>
+                <Button asChild variant="ghost" className="mt-6">
+                    <Link href="/dashboard">Back to events</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    const shareUrl =
+        typeof window !== "undefined"
+            ? `${window.location.origin}/events/${event.id}`
+            : `/events/${event.id}`;
+
+    async function handleShare() {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            toast.success("Invitation link copied.");
+        } catch {
+            toast.error("Couldn't copy — select the link manually.");
+        }
+    }
+
+    function handleExport() {
+        if (!event) return;
+        if (guestList.length === 0) {
+            toast.error("No replies to export yet.");
+            return;
+        }
+
+        const slug =
+            event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
+            "guests";
+
+        downloadCsv(
+            `${slug}-guests.csv`,
+            guestsToCsv(guestList, event.customQuestions, event.timezone)
+        );
+        toast.success(`Exported ${guestList.length} replies.`);
+    }
+
+    async function handleDuplicate() {
+        if (!event) return;
+        try {
+            const newId = await duplicateEvent.mutateAsync(event);
+            toast.success("Copy created as a draft.");
+            router.push(`/dashboard/events/${newId}/edit`);
+        } catch {
+            toast.error("Couldn't duplicate that event.");
+        }
+    }
+
+    async function handleDelete() {
+        try {
+            await deleteEvent.mutateAsync(eventId);
+            toast.success("Event deleted.");
+            router.push("/dashboard");
+        } catch {
+            toast.error("Couldn't delete that event.");
+        }
+    }
+
+    async function handleRemoveGuest(guest: Guest) {
+        try {
+            await removeGuest.mutateAsync(guest);
+            toast.success(`Removed ${guest.name}.`);
+        } catch {
+            toast.error("Couldn't remove that guest.");
+        }
     }
 
     return (
-        <div className="container mx-auto pt-4 pb-8 space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                        <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
-                        <span>&gt;</span>
-                        <span className="text-foreground font-medium">{event.title}</span>
+        <div>
+            <nav className="meta text-ink-faint flex items-center gap-2">
+                <Link href="/dashboard" className="hover:text-ink transition-colors">
+                    Events
+                </Link>
+                <span aria-hidden>/</span>
+                <span className="text-ink-muted truncate">{event.title}</span>
+            </nav>
+
+            <header className="mt-8 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {event.status === "draft" && (
+                            <Badge variant="secondary">Draft</Badge>
+                        )}
+                        {isPast(event) && <Badge variant="declined">Past</Badge>}
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-4">{event.title}</h1>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-violet-500" />
-                            <span>{format(new Date(event.date), "MMM dd, yyyy")}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-1 h-1 rounded-full bg-gray-300"></div>
-                            <span>{format(new Date(event.date), "p")}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {/* @ts-ignore - checking custom field that might exist now */}
-                            {event.locationType === 'online' ? <LinkIcon className="w-4 h-4 text-violet-500" /> : <MapPin className="w-4 h-4 text-violet-500" />}
-                            <span>{event.location}</span>
-                        </div>
+
+                    <h1 className="font-display mt-4 text-4xl text-balance sm:text-5xl">
+                        {event.title}
+                    </h1>
+
+                    <div className="text-ink-muted mt-5 space-y-1.5 text-sm">
+                        <p>{formatLongDate(event.date, event.timezone)}</p>
+                        <p>{formatTimeRange(event.date, event.endDate, event.timezone)}</p>
+                        <p className="wrap-break-word">
+                            {event.locationType === "online" ? "Online" : event.location}
+                        </p>
                     </div>
                 </div>
 
-                <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2">
-                        <Download className="w-4 h-4" />
-                        Export
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="subtle" size="sm" onClick={handleShare}>
+                        <Share2 />
+                        Copy link
                     </Button>
-                    {/* User requested to remove Edit button */}
-                    <Button
-                        className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
-                        onClick={handleShare}
-                    >
-                        <Share2 className="w-4 h-4" />
-                        Share Event
+                    <Button asChild variant="subtle" size="sm">
+                        <a href={`/events/${event.id}`} target="_blank" rel="noreferrer">
+                            <ExternalLink />
+                            View
+                        </a>
                     </Button>
+                    <Button size="sm" onClick={() => setAnnounceOpen(true)}>
+                        <Send />
+                        Message guests
+                    </Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="subtle" size="icon-sm" aria-label="More actions">
+                                <MoreHorizontal />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/events/${event.id}/edit`}>
+                                    <Pencil />
+                                    Edit invitation
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleExport}>
+                                <Download />
+                                Export guest list
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleDuplicate}>
+                                <Copy />
+                                Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                variant="destructive"
+                                onSelect={() => setConfirmDelete(true)}
+                            >
+                                <Trash2 />
+                                Delete event
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-            </div>
+            </header>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* User requested to remove Total Invited card */}
+            <section className="border-rule divide-rule mt-12 grid grid-cols-2 divide-x border-y sm:grid-cols-4">
+                <Stat
+                    label="Heads coming"
+                    value={stats.heads}
+                    detail={
+                        event.capacity > 0
+                            ? `of ${event.capacity} places`
+                            : `${stats.plusOnes} plus-ones`
+                    }
+                    emphasis
+                />
+                <Stat label="Maybe" value={stats.maybe} detail="undecided" />
+                <Stat label="Declined" value={stats.declined} detail="can't make it" />
+                <Stat
+                    label={event.waitlistEnabled ? "Waitlisted" : "Total replies"}
+                    value={event.waitlistEnabled ? stats.waitlisted : stats.replies}
+                    detail={event.waitlistEnabled ? "in the queue" : "responses"}
+                />
+            </section>
 
-                <Card className="shadow-soft hover:shadow-md transition-shadow">
-                    <CardContent className="p-6 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-violet-500/10 rounded-bl-full -mr-2 -mt-2"></div>
-                        <div className="absolute top-3 right-3 w-2 h-2 bg-violet-500 rounded-full"></div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Attending</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-bold text-violet-600 dark:text-violet-400">{stats.attending}</h3>
-                                <span className="text-xs text-muted-foreground">Guests</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            <section className="mt-14">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                    <p className="eyebrow eyebrow-left">The guest list</p>
 
-                <Card className="shadow-soft hover:shadow-md transition-shadow border-l-4 border-l-red-200 dark:border-l-red-900/50">
-                    <CardContent className="p-6">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Not Attending</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.notAttending}</h3>
-                                <Badge variant="outline" className="text-[10px] bg-red-50 text-red-600 border-red-100 px-1 py-0 h-5">
-                                    High decline rate
-                                </Badge>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="shadow-soft hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Maybe</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-bold text-orange-600 dark:text-orange-400">{stats.maybe}</h3>
-                                <span className="text-xs text-muted-foreground">Pending</span>
-                            </div>
-                            {/* <div className="w-full bg-gray-100 h-1 mt-3 rounded-full overflow-hidden">
-                                <div className="bg-orange-400 h-full w-[40%] rounded-full"></div>
-                            </div> */}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Table Controls */}
-            <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="relative w-full sm:w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex gap-3">
                         <Input
-                            placeholder="Search guests by name or email..."
-                            className="pl-9 bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 rounded-xl"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search guests"
+                            className="w-full sm:w-56"
+                            aria-label="Search guests"
                         />
-                    </div>
-                    <div className="flex gap-2">
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                                <div className="flex items-center text-muted-foreground">
-                                    <Filter className="w-4 h-4 mr-2" />
-                                    <SelectValue placeholder="Status" />
-                                </div>
+                        <Select
+                            value={statusFilter}
+                            onValueChange={(value) =>
+                                setStatusFilter(value as "all" | RsvpStatus)
+                            }
+                        >
+                            <SelectTrigger className="w-40 shrink-0">
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="all">All replies</SelectItem>
                                 <SelectItem value="attending">Attending</SelectItem>
-                                <SelectItem value="not_attending">Not Attending</SelectItem>
                                 <SelectItem value="maybe">Maybe</SelectItem>
-                                <SelectItem value="invited">Invited</SelectItem>
+                                <SelectItem value="not_attending">Declined</SelectItem>
+                                <SelectItem value="waitlisted">Waitlisted</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-gray-50/50 dark:bg-zinc-900/50 hover:bg-gray-50/50">
-                                <TableHead className="w-[50px]"></TableHead>
-                                <TableHead>GUEST NAME</TableHead>
-                                <TableHead>CONTACT INFO</TableHead>
-                                <TableHead>STATUS</TableHead>
-                                <TableHead>GUESTS</TableHead>
-                                <TableHead>RSVP DATE</TableHead>
-                                <TableHead className="text-right">ACTIONS</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {currentGuests.length > 0 ? (
-                                currentGuests.map((guest) => (
+                <div className="border-rule mt-6 border">
+                    {loadingGuests ? (
+                        <div className="space-y-3 p-5">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="px-6 py-20 text-center">
+                            <Users className="text-ink-faint mx-auto size-6" />
+                            <p className="font-display mt-5 text-xl">
+                                {guestList.length === 0
+                                    ? "No replies yet"
+                                    : "Nothing matches that"}
+                            </p>
+                            <p className="text-ink-muted mx-auto mt-2 max-w-xs text-sm">
+                                {guestList.length === 0
+                                    ? "Share the invitation link and replies will appear here."
+                                    : "Try a different name or filter."}
+                            </p>
+                            {guestList.length === 0 && (
+                                <Button
+                                    variant="subtle"
+                                    size="sm"
+                                    className="mt-6"
+                                    onClick={handleShare}
+                                >
+                                    <Share2 />
+                                    Copy link
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead>Guest</TableHead>
+                                    <TableHead>Reply</TableHead>
+                                    <TableHead className="text-right">Heads</TableHead>
+                                    <TableHead>Replied</TableHead>
+                                    <TableHead>Note</TableHead>
+                                    <TableHead className="w-12" />
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filtered.map((guest) => (
                                     <TableRow key={guest.id} className="group">
                                         <TableCell>
-                                            <div className="w-2 h-2 rounded-full border border-gray-300"></div>
+                                            <p className="font-medium">{guest.name}</p>
+                                            <p className="text-ink-faint text-xs">{guest.email}</p>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-9 w-9 border border-gray-100">
-                                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${guest.name}`} />
-                                                    <AvatarFallback>{guest.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <div className="font-semibold text-gray-900 dark:text-gray-100">{guest.name}</div>
-                                                    <div className="text-xs text-muted-foreground">{guest.role}</div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm space-y-0.5">
-                                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                                                    <span className="text-xs">✉</span> {guest.email}
-                                                </div>
-                                                {guest.phone && (
-                                                    <div className="flex items-center gap-2 text-gray-400 text-xs">
-                                                        <span>📞</span> {guest.phone}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className={`font-normal capitalize ${getStatusColor(guest.status)}`}>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current mr-2 opacity-70"></span>
-                                                {guest.status.replace('_', ' ')}
+                                            <Badge variant={STATUS_VARIANT[guest.status]}>
+                                                {rsvpStatusLabel(guest.status)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>
-                                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                                                {guest.status === 'not_attending' ? '-' : (guest.guests === 0 ? '0' : guest.guests)}
-                                            </span>
-                                            {guest.guests > 0 && <span className="text-xs text-muted-foreground ml-1">+{guest.guests} Guest</span>}
+                                        <TableCell className="text-right tabular-nums">
+                                            {guest.status === "attending" ? 1 + guest.plusOnes : "—"}
+                                            {guest.plusOnes > 0 && guest.status === "attending" && (
+                                                <span className="text-ink-faint text-xs">
+                                                    {" "}
+                                                    (+{guest.plusOnes})
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-ink-muted text-sm whitespace-nowrap">
+                                            {formatShortDate(guest.rsvpDate, event.timezone)}
+                                        </TableCell>
+                                        <TableCell className="text-ink-muted max-w-56 truncate text-sm">
+                                            {guest.note ||
+                                                event.customQuestions
+                                                    .map((q) => guest.answers[q.id])
+                                                    .filter(Boolean)
+                                                    .join(" · ") ||
+                                                "—"}
                                         </TableCell>
                                         <TableCell>
-                                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                {format(new Date(guest.rsvpDate), "MMM dd, yyyy")}
-                                            </div>
-                                            <div className="text-xs text-gray-400">
-                                                {format(new Date(guest.rsvpDate), "p")}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MoreVertical className="w-4 h-4 text-gray-400" />
-                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                                        aria-label={`Actions for ${guest.name}`}
+                                                    >
+                                                        <MoreHorizontal />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem asChild>
+                                                        <a href={`mailto:${guest.email}`}>
+                                                            <Send />
+                                                            Email {guest.name.split(" ")[0]}
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        variant="destructive"
+                                                        onSelect={() => handleRemoveGuest(guest)}
+                                                    >
+                                                        <Trash2 />
+                                                        Remove
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="h-64 text-center text-muted-foreground">
-                                        <div className="flex flex-col items-center justify-center space-y-3">
-                                            <Users className="w-12 h-12 text-gray-200" />
-                                            <p className="text-lg font-medium text-gray-500">No guests yet</p>
-                                            <p className="text-sm text-gray-400">Share your event to start getting RSVPs!</p>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between p-4 border-t border-gray-100 dark:border-zinc-800">
-                        <div className="text-sm text-muted-foreground">
-                            Showing <span className="font-medium text-foreground">{filteredGuests.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(currentPage * itemsPerPage, filteredGuests.length)}</span> of <span className="font-medium text-foreground">{filteredGuests.length}</span> guests
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg disabled:opacity-50"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1 || filteredGuests.length === 0}
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="default"
-                                size="sm"
-                                className="rounded-lg bg-violet-600 hover:bg-violet-700"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage >= totalPages || filteredGuests.length === 0}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
-            </div>
+
+                {filtered.length > 0 && (
+                    <div className="mt-4 flex items-center justify-between">
+                        <p className="text-ink-faint text-xs">
+                            Showing {filtered.length} of {guestList.length} replies
+                        </p>
+                        <Button variant="ghost" size="sm" onClick={handleExport}>
+                            <Download />
+                            Export CSV
+                        </Button>
+                    </div>
+                )}
+            </section>
+
+            <AnnounceDialog
+                open={announceOpen}
+                onOpenChange={setAnnounceOpen}
+                event={event}
+                guests={guestList}
+            />
+
+            <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete this event?</DialogTitle>
+                        <DialogDescription>
+                            {event.title} and its {guestList.length} repl
+                            {guestList.length === 1 ? "y" : "ies"} will be permanently
+                            removed. The invitation link will stop working. This cannot be
+                            undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setConfirmDelete(false)}
+                            disabled={deleteEvent.isPending}
+                        >
+                            Keep it
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={deleteEvent.isPending}
+                        >
+                            {deleteEvent.isPending ? (
+                                <>
+                                    <Loader2 className="animate-spin" />
+                                    Deleting
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 />
+                                    Delete permanently
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
+function Stat({
+    label,
+    value,
+    detail,
+    emphasis,
+}: {
+    label: string;
+    value: number;
+    detail: string;
+    emphasis?: boolean;
+}) {
+    return (
+        <div className="px-5 py-7 first:pl-0 sm:px-7">
+            <p className="meta text-ink-faint">{label}</p>
+            <p
+                className={`font-display mt-3 text-4xl tabular-nums ${emphasis ? "text-seal" : "text-ink"
+                    }`}
+            >
+                {value}
+            </p>
+            <p className="text-ink-faint mt-1.5 text-xs">{detail}</p>
         </div>
     );
 }

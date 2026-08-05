@@ -2,34 +2,136 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Events Collection
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function eventOf(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data;
+    }
+
+    function isHostOf(eventId) {
+      return signedIn() && eventOf(eventId).creatorId == request.auth.uid;
+    }
+
     match /events/{eventId} {
-      // Anyone can see event details
+
+      // The invitation itself is public — that is the entire point of a share link.
       allow read: if true;
 
-      // Only authenticated users can create events
-      allow create: if request.auth != null;
+      allow create: if signedIn()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.attendees == 0
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 140
+                    && request.resource.data.capacity is int
+                    && request.resource.data.capacity >= 0;
 
-      // Updates allowed if:
-      // 1. You are the creator of the event
-      // 2. OR you are just updating the 'attendees' count (for public RSVPs)
-      allow update: if (request.auth != null && request.auth.uid == resource.data.creatorId)
-                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendees']));
+      allow update: if isOwnerEdit() || isAttendeeCountChange();
 
-      // Only creator can delete
-      allow delete: if request.auth != null && request.auth.uid == resource.data.creatorId;
+      allow delete: if signedIn() && resource.data.creatorId == request.auth.uid;
 
-      // Guests Subcollection (for RSVPs)
+      function isOwnerEdit() {
+        return signedIn()
+               && resource.data.creatorId == request.auth.uid
+               && request.resource.data.creatorId == resource.data.creatorId;
+      }
+
+      // A public RSVP may nudge the headcount and nothing else. The old rule
+      // checked only *which* key changed, so anyone could set it to any number.
+      function isAttendeeCountChange() {
+        let next = request.resource.data;
+        let prev = resource.data;
+        let ceiling = 1 + prev.get('maxPlusOnes', 0);
+        let delta = next.attendees - prev.attendees;
+        return next.diff(prev).affectedKeys().hasOnly(['attendees'])
+               && next.attendees is int
+               && next.attendees >= 0
+               && delta >= -ceiling
+               && delta <= ceiling
+               && (prev.get('capacity', 0) == 0 || next.attendees <= prev.capacity);
+      }
+
+      // Guest records hold names, emails and answers.
+      //
+      // `list` is host-only, so the guest list can no longer be harvested in
+      // bulk. `get` stays open because the document id is a SHA-256 of the
+      // guest's own email — a guest can reach their own RSVP to amend it
+      // without an account, but you cannot enumerate or discover others.
       match /guests/{guestId} {
-        // Public needs read/write access to RSVP
-        // In a production app, you might want to secure this further (e.g. via Cloud Functions)
-        allow read, write: if true;
+        allow get: if true;
+        allow list: if isHostOf(eventId);
+        allow create, update: if isValidGuest(eventId);
+        allow delete: if isHostOf(eventId);
+      }
+
+      function isValidGuest(eventId) {
+        let d = request.resource.data;
+        let ev = eventOf(eventId);
+        return d.name is string && d.name.size() > 0 && d.name.size() <= 120
+               && d.email is string && d.email.size() > 3 && d.email.size() <= 254
+               && d.status in ['attending', 'not_attending', 'maybe', 'waitlisted']
+               && d.plusOnes is int
+               && d.plusOnes >= 0
+               && d.plusOnes <= ev.get('maxPlusOnes', 0)
+               && d.note is string && d.note.size() <= 500;
+      }
+
+      // Name-only projection so a public guest list never exposes an address.
+      match /attendees_public/{guestId} {
+        allow read: if eventOf(eventId).get('guestListPublic', false) == true
+                    || isHostOf(eventId);
+        allow create, update: if isValidPublicAttendee();
+        allow delete: if true;
+      }
+
+      function isValidPublicAttendee() {
+        let d = request.resource.data;
+        return d.firstName is string && d.firstName.size() > 0 && d.firstName.size() <= 60
+               && d.plusOnes is int && d.plusOnes >= 0 && d.plusOnes <= 20
+               && d.keys().hasOnly(['firstName', 'plusOnes', 'rsvpDate']);
+      }
+
+      match /messages/{messageId} {
+        allow read: if eventOf(eventId).get('discussionEnabled', false) == true
+                    || isHostOf(eventId);
+        allow create: if eventOf(eventId).get('discussionEnabled', false) == true
+                      && isValidMessage();
+        allow update: if false;
+        allow delete: if isHostOf(eventId);
+      }
+
+      function isValidMessage() {
+        let d = request.resource.data;
+        return d.authorName is string && d.authorName.size() > 0 && d.authorName.size() <= 80
+               && d.body is string && d.body.size() > 0 && d.body.size() <= 1000;
+      }
+
+      match /photos/{photoId} {
+        allow read: if eventOf(eventId).get('galleryEnabled', false) == true
+                    || isHostOf(eventId);
+        allow create: if eventOf(eventId).get('galleryEnabled', false) == true
+                      && isValidPhoto();
+        allow update: if false;
+        allow delete: if isHostOf(eventId);
+      }
+
+      function isValidPhoto() {
+        let d = request.resource.data;
+        return d.url is string && d.url.matches('https://.*')
+               && d.uploaderName is string && d.uploaderName.size() <= 80
+               && d.caption is string && d.caption.size() <= 200;
+      }
+
+      // Sent announcements are host-only in both directions.
+      match /announcements/{announcementId} {
+        allow read, write: if isHostOf(eventId);
       }
     }
 
-    // Users Collection
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if signedIn() && request.auth.uid == userId;
     }
   }
 }
