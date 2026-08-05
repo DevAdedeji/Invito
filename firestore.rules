@@ -79,11 +79,21 @@ service cloud.firestore {
       }
 
       // Name-only projection so a public guest list never exposes an address.
+      //
+      // Deletion is open to guests because withdrawing an RSVP has to remove
+      // this entry without an account, but only once the underlying reply is no
+      // longer "attending" — so an entry can be cleared when it is already
+      // stale, never while it is live.
       match /attendees_public/{guestId} {
         allow read: if eventOf(eventId).get('guestListPublic', false) == true
                     || isHostOf(eventId);
         allow create, update: if isValidPublicAttendee();
-        allow delete: if true;
+        allow delete: if isHostOf(eventId) || isWithdrawn(eventId, guestId);
+      }
+
+      function isWithdrawn(eventId, guestId) {
+        let guestPath = /databases/$(database)/documents/events/$(eventId)/guests/$(guestId);
+        return !exists(guestPath) || get(guestPath).data.status != 'attending';
       }
 
       function isValidPublicAttendee() {

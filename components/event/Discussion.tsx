@@ -10,18 +10,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMessages, usePostMessage } from "@/hooks/useEvents";
 import { formatRelative } from "@/lib/datetime";
+import type { DiscussionMessage } from "@/lib/types";
 
-export default function Discussion({ eventId }: { eventId: string }) {
-    const { data: messages, isLoading } = useMessages(eventId, true);
+export default function Discussion({
+    eventId,
+    demoMessages,
+}: {
+    eventId: string;
+    demoMessages?: DiscussionMessage[];
+}) {
+    const demo = demoMessages !== undefined;
+
+    const { data: fetched, isLoading: isFetching } = useMessages(eventId, !demo);
     const postMessage = usePostMessage(eventId);
 
+    const [localMessages, setLocalMessages] = useState<DiscussionMessage[]>(
+        demoMessages ?? []
+    );
     const [authorName, setAuthorName] = useState("");
     const [body, setBody] = useState("");
+
+    const messages = demo ? localMessages : fetched;
+    const isLoading = demo ? false : isFetching;
 
     async function handleSubmit(event: React.FormEvent) {
         event.preventDefault();
         if (!authorName.trim() || !body.trim()) {
             toast.error("Add your name and a message.");
+            return;
+        }
+
+        if (demo) {
+            setLocalMessages((current) => [
+                ...current,
+                {
+                    id: `local-${current.length}`,
+                    authorName: authorName.trim(),
+                    body: body.trim(),
+                    createdAt: new Date().toISOString(),
+                    isHost: false,
+                },
+            ]);
+            setBody("");
+            toast.info("Sample invitation — your note wasn't saved.");
             return;
         }
 

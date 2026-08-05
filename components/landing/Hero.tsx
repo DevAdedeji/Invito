@@ -24,8 +24,8 @@ export default function Hero() {
                         <Button asChild size="lg">
                             <Link href="/auth/signup">Create an invitation</Link>
                         </Button>
-                        <Button asChild variant="ghost" size="lg">
-                            <a href="#how">See how it works</a>
+                        <Button asChild variant="subtle" size="lg">
+                            <Link href="/demo">See a live example</Link>
                         </Button>
                     </div>
 
@@ -34,7 +34,13 @@ export default function Hero() {
                     </p>
                 </div>
 
-                <SampleInvitation />
+                <Link
+                    href="/demo"
+                    className="group block"
+                    aria-label="Open the sample invitation"
+                >
+                    <SampleInvitation />
+                </Link>
             </div>
         </header>
     );
@@ -43,7 +49,7 @@ export default function Hero() {
 function SampleInvitation() {
     return (
         <div className="relative mx-auto w-full max-w-sm">
-            <div className="border-rule bg-paper-raised relative border px-9 py-12 text-center">
+            <div className="border-rule group-hover:border-rule-strong bg-paper-raised relative border px-9 py-12 text-center transition-colors">
                 <div className="border-rule pointer-events-none absolute inset-3 border" />
 
                 <p className="eyebrow justify-center">You&rsquo;re invited</p>

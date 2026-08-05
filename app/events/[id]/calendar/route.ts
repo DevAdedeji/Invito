@@ -1,4 +1,5 @@
 import { buildIcs } from "@/lib/datetime";
+import { DEMO_EVENT_ID, demoEvent } from "@/lib/demo-event";
 import { fetchEventServer } from "@/lib/firestore-rest";
 
 export async function GET(
@@ -6,7 +7,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
-    const event = await fetchEventServer(id, 60);
+    const event =
+        id === DEMO_EVENT_ID ? demoEvent() : await fetchEventServer(id, 60);
 
     if (!event) {
         return new Response("Event not found", { status: 404 });

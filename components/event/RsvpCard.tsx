@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { isFull, isPast, seatsLeft } from "@/lib/events";
 import { EventFullError, lookupRsvp, submitRsvp } from "@/lib/rsvp";
+import { resolveRsvp } from "@/lib/rsvp-policy";
 import type { InvitoEvent, RsvpStatus } from "@/lib/types";
 
 type Choice = "attending" | "not_attending" | "maybe";
@@ -22,7 +23,13 @@ const CHOICES: { value: Choice; label: string; hint: string }[] = [
     { value: "not_attending", label: "Regretfully declines", hint: "Can't make it" },
 ];
 
-export default function RsvpCard({ event }: { event: InvitoEvent }) {
+export default function RsvpCard({
+    event,
+    demo = false,
+}: {
+    event: InvitoEvent;
+    demo?: boolean;
+}) {
     const router = useRouter();
 
     const [choice, setChoice] = useState<Choice>("attending");
@@ -104,7 +111,7 @@ export default function RsvpCard({ event }: { event: InvitoEvent }) {
     const closedToNewAttendees = full && !event.waitlistEnabled;
 
     async function handleEmailBlur() {
-        if (!email.includes("@") || foundExisting) return;
+        if (demo || !email.includes("@") || foundExisting) return;
         const existing = await lookupRsvp(event.id, email);
         if (!existing) return;
 
@@ -130,6 +137,26 @@ export default function RsvpCard({ event }: { event: InvitoEvent }) {
         );
         if (missing) {
             toast.error(`Please answer: ${missing.label}`);
+            return;
+        }
+
+        if (demo) {
+            // Run the real capacity rules so the sample behaves honestly, but
+            // write nothing.
+            const decision = resolveRsvp({
+                event,
+                choice,
+                plusOnes,
+                previous: null,
+            });
+
+            if (decision.kind === "full") {
+                toast.error("This event is full.");
+                return;
+            }
+
+            setResult(decision.status);
+            toast.info("Sample invitation — your reply wasn't saved.");
             return;
         }
 
